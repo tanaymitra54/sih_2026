@@ -12,6 +12,9 @@ export function Manufacturer() {
   const [selected, setSelected] = useState<Batch | null>(null);
   const [msg, setMsg] = useState("");
 
+  // QR encodes a URL so a phone camera / Google Lens opens the public verify page.
+  const verifyUrl = (qr: string) => `${location.origin}/consumer/verify?qr=${encodeURIComponent(qr)}`;
+
   async function load() {
     const { data } = await api.get("/batches");
     setBatches(data);
@@ -56,12 +59,12 @@ export function Manufacturer() {
       {selected && (
         <div className="card">
           <h2>Signed QRs — {selected.name} ({selected.code})</h2>
-          <p className="muted">Paste one of these into the Verify page, or scan with the camera.</p>
+          <p className="muted">Scan with any phone camera / Google Lens — it opens the public Verify page. Pasting the text also works.</p>
           <div className="grid">
             {selected.products.map((p) => (
               <div key={p.id} className="qr-cell">
                 <div id={`qr-${p.id}`}>
-                  <QRCodeCanvas value={p.qr} size={140} includeMargin />
+                  <QRCodeCanvas value={verifyUrl(p.qr)} size={200} includeMargin />
                 </div>
                 <StatusBadge state={p.state} />
                 <span className="muted">{p.serial}</span>

@@ -27,6 +27,17 @@ export function Pharmacist() {
     }
   }
 
+  async function receive(qr: string) {
+    setError(""); setMsg("");
+    try {
+      const { data } = await api.post("/custody/receive", { qr });
+      setMsg(`Received ${data.serial} — state ${data.state}. Custody block appended.`);
+      load();
+    } catch (e: any) {
+      setError(e.response?.data?.error ?? "Receive failed");
+    }
+  }
+
   async function sell(serial: string) {
     setError(""); setMsg("");
     try {
@@ -45,6 +56,11 @@ export function Pharmacist() {
     <>
       <h1>Pharmacist</h1>
       <p className="muted">Verify before sale: signature check + custody-chain check. Only genuine, chain-complete packs can be dispensed.</p>
+
+      <div className="card">
+        <h2>Receive from distributor</h2>
+        <ScanInput onResult={receive} buttonLabel="Receive" placeholder="Scan / paste pack QR (MEDG:...)" />
+      </div>
 
       <ScanInput onResult={verify} buttonLabel="Verify" placeholder="Scan / paste pack QR (MEDG:...)" />
 
