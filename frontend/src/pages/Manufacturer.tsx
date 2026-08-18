@@ -4,14 +4,7 @@ import { api } from "../api";
 import type { Batch } from "../types";
 import { StatusBadge } from "../components/StatusBadge";
 import { verifyUrl } from "../utils/qrUrl";
-
-function ChevronIcon() {
-  return (
-    <svg className="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9 6l6 6-6 6" />
-    </svg>
-  );
-}
+import { BoxIcon, ChevronIcon, DownloadIcon, PlusIcon } from "../components/icons";
 
 export function Manufacturer() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -58,7 +51,7 @@ export function Manufacturer() {
           <div className="field"><label>Declared route</label><input value={route} onChange={(e) => setRoute(e.target.value)} /></div>
         </div>
         {msg && <p className="success">{msg}</p>}
-        <button className="btn" onClick={create}>Mint batch</button>
+        <button className="btn" onClick={create}><PlusIcon /> Mint batch</button>
       </div>
 
       <div className="group">
@@ -66,11 +59,12 @@ export function Manufacturer() {
         {batches.length === 0 && <div className="row"><div className="row-main"><div className="row-sub">No batches yet.</div></div></div>}
         {batches.map((b) => (
           <div key={b.id} className="row clickable" onClick={() => setSelected(b)}>
+            <span className="stat-icon"><BoxIcon /></span>
             <div className="row-main">
               <div className="row-title">{b.name}</div>
               <div className="row-sub">{b.code} · route {b.route} · {b.products.length} packs</div>
             </div>
-            <ChevronIcon />
+            <ChevronIcon size={18} className="chevron" />
           </div>
         ))}
       </div>
@@ -97,7 +91,7 @@ export function Manufacturer() {
                     a.click();
                   }}
                 >
-                  Download
+                  <DownloadIcon /> Download
                 </button>
               </div>
             ))}

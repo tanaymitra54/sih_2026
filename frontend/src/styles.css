@@ -13,68 +13,68 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* --- Light (default) --- */
+/* --- Light (apple.com) --- */
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f2f2f7;
+  --bg: #f5f5f7;                  /* apple.com light gray */
   --bg-soft: #ffffff;
   --card: #ffffff;
-  --card-secondary: #f2f2f7;
+  --card-secondary: #f5f5f7;
   --ink: #1d1d1f;
   --ink-secondary: #6e6e73;
-  --ink-tertiary: #aeaeb2;
-  --hairline: rgba(60, 60, 67, 0.22);
-  --accent: #06038d;          /* chakra navy */
-  --accent-strong: #05027a;
-  --accent-soft: rgba(6, 3, 141, 0.1);
-  --saffron: #ff671f;
-  --saffron-strong: #e8590f;
-  --saffron-soft: rgba(255, 103, 31, 0.14);
-  --green: #046a38;           /* india green */
-  --green-strong: #03572e;
-  --green-soft: rgba(4, 106, 56, 0.13);
-  --red: #c8102e;
-  --red-soft: rgba(200, 16, 46, 0.12);
-  --amber: #b26a00;
-  --amber-soft: rgba(229, 126, 0, 0.16);
+  --ink-tertiary: #86868b;
+  --hairline: rgba(0, 0, 0, 0.16);
+  --accent: #0071e3;              /* apple blue */
+  --accent-strong: #006edb;
+  --accent-soft: rgba(0, 113, 227, 0.14);
+  --saffron: #ff671f;             /* indian saffron */
+  --saffron-strong: #ef5b14;
+  --saffron-soft: rgba(255, 103, 31, 0.16);
+  --green: #34c759;               /* vivid success green */
+  --green-strong: #28a745;
+  --green-soft: rgba(52, 199, 89, 0.16);
+  --red: #ff3b30;
+  --red-soft: rgba(255, 59, 48, 0.14);
+  --amber: #ff9500;
+  --amber-soft: rgba(255, 149, 0, 0.18);
   --glass: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(60, 60, 67, 0.16);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
-  --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.06), 0 16px 40px rgba(0, 0, 0, 0.12);
-  --focus: rgba(6, 3, 141, 0.45);
+  --glass-border: rgba(0, 0, 0, 0.14);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.07);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.07), 0 16px 40px rgba(0, 0, 0, 0.13);
+  --focus: rgba(0, 113, 227, 0.5);
   --tabbar-glow: 0 -6px 24px rgba(0, 0, 0, 0.06);
 }
 
-/* --- Dark --- */
+/* --- Dark (apple.com) --- */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #000000;
-  --bg-soft: #1c1c1e;
-  --card: #1c1c1e;
-  --card-secondary: #2c2c2e;
-  --ink: #ffffff;
-  --ink-secondary: rgba(235, 235, 245, 0.6);
-  --ink-tertiary: rgba(235, 235, 245, 0.3);
-  --hairline: rgba(84, 84, 88, 0.6);
-  --accent: #7c7cff;
-  --accent-strong: #9a9aff;
-  --accent-soft: rgba(124, 124, 255, 0.16);
+  --bg-soft: #161617;
+  --card: #161617;
+  --card-secondary: #1d1d1f;
+  --ink: #f5f5f7;
+  --ink-secondary: #86868b;
+  --ink-tertiary: #a1a1a6;
+  --hairline: rgba(255, 255, 255, 0.16);
+  --accent: #2997ff;              /* apple.com dark blue */
+  --accent-strong: #0a84ff;
+  --accent-soft: rgba(41, 151, 255, 0.2);
   --saffron: #ff9f45;
   --saffron-strong: #ffb066;
-  --saffron-soft: rgba(255, 159, 69, 0.16);
-  --green: #32d74b;
+  --saffron-soft: rgba(255, 159, 69, 0.18);
+  --green: #30d158;
   --green-strong: #5ce07a;
-  --green-soft: rgba(50, 215, 75, 0.16);
+  --green-soft: rgba(48, 209, 88, 0.18);
   --red: #ff453a;
-  --red-soft: rgba(255, 69, 58, 0.16);
+  --red-soft: rgba(255, 69, 58, 0.18);
   --amber: #ffd60a;
-  --amber-soft: rgba(255, 214, 10, 0.16);
+  --amber-soft: rgba(255, 214, 10, 0.18);
   --glass: rgba(22, 22, 24, 0.72);
-  --glass-border: rgba(84, 84, 88, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.14);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.5);
   --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.6), 0 20px 44px rgba(0, 0, 0, 0.6);
-  --focus: rgba(124, 124, 255, 0.6);
+  --focus: rgba(41, 151, 255, 0.6);
   --tabbar-glow: 0 -6px 24px rgba(0, 0, 0, 0.4);
 }
 
@@ -182,8 +182,20 @@ p { margin: 0.4rem 0; }
 }
 .stat .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--accent); }
 .stat .stat-label { font-size: 12px; font-weight: 500; color: var(--ink-secondary); }
+.stat-icon {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+.stat-icon svg { width: 18px; height: 18px; }
 .stat.accent-saffron .stat-value { color: var(--saffron); }
 .stat.accent-green .stat-value { color: var(--green); }
+.stat.accent-saffron .stat-icon { background: var(--saffron-soft); color: var(--saffron); }
+.stat.accent-green .stat-icon { background: var(--green-soft); color: var(--green); }
 
 /* ============================== Top nav (macOS glass) ============================== */
 
@@ -373,6 +385,8 @@ p { margin: 0.4rem 0; }
 .btn-block { width: 100%; }
 
 .btn.small { padding: 0.4rem 0.8rem; font-size: 13px; min-height: 34px; border-radius: 10px; }
+.btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+.btn.small svg { width: 15px; height: 15px; }
 
 .icon-btn {
   display: inline-grid;

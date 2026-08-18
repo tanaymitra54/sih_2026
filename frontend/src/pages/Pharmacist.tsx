@@ -6,29 +6,7 @@ import { ScanInput } from "../components/ScanInput";
 import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
 import { verifyUrl } from "../utils/qrUrl";
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 6L9 17l-5-5" />
-    </svg>
-  );
-}
-function WarnIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-      <path d="M12 9v4M12 17h.01" />
-    </svg>
-  );
-}
-function CrossIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M18 6L6 18M6 6l12 12" />
-    </svg>
-  );
-}
+import { CartIcon, CheckIcon, CrossIcon, StoreIcon, TruckIcon, WarnIcon } from "../components/icons";
 
 export function Pharmacist() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -89,9 +67,9 @@ export function Pharmacist() {
       </div>
 
       <div className="stats">
-        <div className="stat"><span className="stat-value">{ready.length}</span><span className="stat-label">Ready to dispense</span></div>
-        <div className="stat accent-green"><span className="stat-value">{sold.length}</span><span className="stat-label">Sold</span></div>
-        <div className="stat"><span className="stat-value">{received.length}</span><span className="stat-label">Received</span></div>
+        <div className="stat"><span className="stat-icon"><StoreIcon /></span><span className="stat-value">{ready.length}</span><span className="stat-label">Ready to dispense</span></div>
+        <div className="stat accent-green"><span className="stat-icon"><CartIcon /></span><span className="stat-value">{sold.length}</span><span className="stat-label">Sold</span></div>
+        <div className="stat"><span className="stat-icon"><TruckIcon /></span><span className="stat-value">{received.length}</span><span className="stat-label">Received</span></div>
       </div>
 
       <div className="section-title">Scan & verify</div>
@@ -125,7 +103,7 @@ export function Pharmacist() {
           {result.verdict === "GENUINE" && result.product.state === "AT_PHARMACY" && (
             <div className="row">
               <button className="btn btn-green" style={{ width: "100%" }} onClick={() => sell(result.product!.serial)}>
-                Dispense & mark SOLD
+                <CartIcon /> Dispense & mark SOLD
               </button>
             </div>
           )}

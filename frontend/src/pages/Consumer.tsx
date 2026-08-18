@@ -5,36 +5,12 @@ import type { VerifyResult } from "../types";
 import { ScanInput } from "../components/ScanInput";
 import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 6L9 17l-5-5" />
-    </svg>
-  );
-}
-
-function WarnIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-      <path d="M12 9v4M12 17h.01" />
-    </svg>
-  );
-}
-
-function CrossIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M18 6L6 18M6 6l12 12" />
-    </svg>
-  );
-}
+import { CartIcon, CheckIcon, CrossIcon, WarnIcon } from "../components/icons";
 
 function VerdictIcon({ verdict }: { verdict: string }) {
-  if (verdict === "GENUINE") return <CheckIcon />;
-  if (verdict === "SUSPICIOUS") return <WarnIcon />;
-  return <CrossIcon />;
+  if (verdict === "GENUINE") return <CheckIcon size={28} />;
+  if (verdict === "SUSPICIOUS") return <WarnIcon size={28} />;
+  return <CrossIcon size={28} />;
 }
 
 const VERDICT_COPY: Record<string, { label: string; sub: string }> = {
@@ -130,7 +106,9 @@ export function Consumer() {
           )}
           {result.verdict === "GENUINE" && result.product.state === "AT_PHARMACY" && !bought && (
             <div className="row">
-              <button className="btn btn-green" style={{ width: "100%" }} onClick={() => buy(result.product!.serial)}>Buy</button>
+              <button className="btn btn-green" style={{ width: "100%" }} onClick={() => buy(result.product!.serial)}>
+                <CartIcon /> Buy
+              </button>
             </div>
           )}
           {bought && <p className="success" style={{ padding: "0.5rem 1.1rem" }}>Purchased — this pack is now SOLD.</p>}

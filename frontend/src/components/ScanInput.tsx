@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { useQrScanner } from "../utils/useQrScanner";
-
-function CameraIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M14.5 4H9.5L7.5 6.5H4A2 2 0 0 0 2 8.5v9A2 2 0 0 0 4 19.5h16a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-3.5L14.5 4z" />
-      <circle cx="12" cy="13" r="3.6" />
-    </svg>
-  );
-}
+import { CameraIcon, ScanIcon } from "./icons";
 
 export function ScanInput({ onResult, placeholder = "Paste QR text or scan", buttonLabel = "Verify" }: {
   onResult: (text: string) => void;
@@ -32,6 +24,7 @@ export function ScanInput({ onResult, placeholder = "Paste QR text or scan", but
           onKeyDown={(e) => e.key === "Enter" && text && onResult(text)}
         />
         <button className="btn" onClick={() => text && onResult(text)} disabled={!text}>
+          <ScanIcon />
           {buttonLabel}
         </button>
         <button
