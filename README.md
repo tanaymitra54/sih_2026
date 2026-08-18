@@ -95,10 +95,10 @@ Seed logins (password `demo1234`):
 
 ```mermaid
 flowchart LR
-    mfr[mfr@medguard.in] --> M[Manufacturer<br/>mints QRs]
-    dist[dist@medguard.in] --> D[Distributor<br/>receives stock]
-    pharma[pharma@medguard.in] --> P[Pharmacist<br/>verifies + sells]
-    consumer[consumer@medguard.in] --> C[Consumer<br/>verifies purchase]
+    mfr["mfr@medguard.in"] --> M[Manufacturer<br/>mints QRs]
+    dist["dist@medguard.in"] --> D[Distributor<br/>receives stock]
+    pharma["pharma@medguard.in"] --> P[Pharmacist<br/>verifies + sells]
+    consumer["consumer@medguard.in"] --> C[Consumer<br/>verifies purchase]
 ```
 
 | Role | Email | Home route |
