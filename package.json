@@ -1,0 +1,17 @@
+{
+  "name": "medguard",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "setup": "npm install && npm run db:push -w backend && npm run seed -w backend",
+    "seed": "npm run seed -w backend",
+    "selfcheck": "npm run selfcheck -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

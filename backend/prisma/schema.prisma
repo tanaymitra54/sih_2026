@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String   @id @default(cuid())
+  name     String
+  email    String   @unique
+  password String
+  role     String // manufacturer | distributor | pharmacist | consumer
+  location String?
+  createdAt DateTime @default(now())
+  batches  Batch[]
+}
+
+model Batch {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  name        String
+  route       String
+  manufacturerId String
+  manufacturer User      @relation(fields: [manufacturerId], references: [id])
+  quantity    Int
+  createdAt   DateTime  @default(now())
+  products    Product[]
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  serial    String   @unique
+  hmac      String
+  batchId   String
+  batch     Batch    @relation(fields: [batchId], references: [id])
+  state     String // CREATED | DISTRIBUTED | AT_PHARMACY | SOLD
+  createdAt DateTime @default(now())
+  blocks    CustodyRecord[]
+  scans     ScanEvent[]
+  reports   Report[]
+  alerts    Alert[]
+}
+
+model CustodyRecord {
+  id            String   @id @default(cuid())
+  index         Int
+  blockHash     String   @unique
+  prevHash      String
+  productPrevHash String
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  action        String // MINT | RECEIVE | VERIFY | SELL
+  signer        String
+  payload       String
+  timestamp     Int
+}
+
+model ScanEvent {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  location  String?
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  reporterId String?
+  reason     String
+  createdAt  DateTime @default(now())
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  type      String
+  message   String
+  createdAt DateTime @default(now())
+}
