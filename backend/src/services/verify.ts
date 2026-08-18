@@ -1,6 +1,7 @@
 import { db } from "../config.js";
 import { appendBlock, productBlocks, productChainIsValid } from "../blockchain/ledger.js";
 import { ACTIONS } from "../blockchain/ledger.js";
+import { missingHandoffs } from "../blockchain/ledger-core.js";
 import { verifySignature, parseQr } from "../utils/qr.js";
 
 export interface VerifyResult {
@@ -51,6 +52,12 @@ export async function verifyProduct(
     : { valid: false };
 
   if (!chain.valid) flags.push("chain_broken");
+
+  const missing = missingHandoffs(product.state, blocks.map((b) => b.action));
+  if (missing.length) {
+    flags.push("missing_handoff");
+    await createAlert(product.id, "missing_handoff", `${product.serial}: chain missing ${missing.join(", ")} for state ${product.state}.`);
+  }
 
   if (product.state === "SOLD") {
     flags.push("scanned_after_sold");

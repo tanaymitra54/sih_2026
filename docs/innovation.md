@@ -23,7 +23,9 @@ The ledger's integrity is necessary but not sufficient — real counterfeiters c
 a *genuine* serial. We catch them with behavior:
 - **scanned after sold** → the same pack being "used" twice,
 - **route mismatch** → a Delhi batch scanned in Mumbai,
-- **scan flood** → one serial scanned 3+ times = many copies in the wild.
+- **scan flood** → one serial scanned 3+ times = many copies in the wild,
+- **missing hand-off** → the journey skipped a mandatory node (e.g. a state whose
+  chain has no distributor/pharmacist hand-off or no sale record).
 
 All feed the **Alert feed** automatically, with no human in the loop.
 

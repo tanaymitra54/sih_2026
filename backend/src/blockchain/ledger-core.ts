@@ -38,6 +38,22 @@ export interface ChainCheck {
 }
 
 /**
+ * Milestones a product's chain must contain for its current state to be legitimate.
+ * Catches a chain that skipped a mandatory hand-off (defense in depth on top of the
+ * server-side state machine — fires if a state was tampered with or bypassed).
+ */
+export function missingHandoffs(state: string, actions: string[]): string[] {
+  const receives = actions.filter((a) => a === "RECEIVE").length;
+  const missing: string[] = [];
+  if (state === "DISTRIBUTED" && receives < 1) missing.push("distributor hand-off");
+  if ((state === "AT_PHARMACY" || state === "SOLD") && receives < 2) {
+    missing.push("distributor + pharmacist hand-off");
+  }
+  if (state === "SOLD" && !actions.includes("SELL")) missing.push("sale record");
+  return missing;
+}
+
+/**
  * Validates a product's custody chain (blocks ordered by index).
  * Each block must re-hash to its stored blockHash and its productPrevHash
  * must link to the previous block in the same product's chain.
