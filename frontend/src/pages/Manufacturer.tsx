@@ -3,6 +3,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { api } from "../api";
 import type { Batch } from "../types";
 import { StatusBadge } from "../components/StatusBadge";
+import { verifyUrl } from "../utils/qrUrl";
 
 function ChevronIcon() {
   return (
@@ -20,20 +21,26 @@ export function Manufacturer() {
   const [selected, setSelected] = useState<Batch | null>(null);
   const [msg, setMsg] = useState("");
 
-  // QR encodes a URL so a phone camera / Google Lens opens the public verify page.
-  const verifyUrl = (qr: string) => `${location.origin}/consumer/verify?qr=${encodeURIComponent(qr)}`;
-
   async function load() {
     const { data } = await api.get("/batches");
     setBatches(data);
     setSelected((s) => (s ? data.find((b: Batch) => b.id === s.id) ?? null : null));
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
 
   async function create() {
-    await api.post("/batches", { name, quantity, route });
-    setName(""); setQuantity(5); setMsg("Batch minted — each pack got a signed QR.");
-    await load();
+    setMsg("");
+    try {
+      await api.post("/batches", { name, quantity, route });
+      setName(""); setQuantity(5); setMsg("Batch minted — each pack got a signed QR.");
+      await load();
+    } catch (e: any) {
+      setMsg(e.response?.data?.error ?? "Mint failed — try logging out and back in.");
+    }
   }
 
   return (

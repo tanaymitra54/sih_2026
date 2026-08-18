@@ -1,7 +1,7 @@
 import { db } from "../config.js";
 import { appendBlock } from "../blockchain/ledger.js";
 import { ACTIONS } from "../blockchain/ledger.js";
-import { parseQr } from "../utils/qr.js";
+import { parseQr, encodeQr } from "../utils/qr.js";
 
 /**
  * Distributor or pharmacist receives custody of a product by scanning its QR.
@@ -72,9 +72,29 @@ export async function sellProduct(pharmacistId: string, serial: string) {
 }
 
 export async function productsByState(state?: string) {
-  return db.product.findMany({
+  const products = await db.product.findMany({
     where: state ? { state } : {},
     include: { batch: true },
     orderBy: { createdAt: "desc" },
   });
+  return products.map((p) => ({ ...p, qr: encodeQr(p.serial, p.hmac, p.batch.code) }));
+}
+
+/** Consumer buys a genuine pack at a pharmacy — closes the chain as SOLD. */
+export async function buyProduct(serial: string) {
+  const product = await db.product.findUnique({ where: { serial } });
+  if (!product) throw new Error("not_found");
+  if (product.state !== "AT_PHARMACY") {
+    if (product.state === "SOLD") return { ...product, state: "SOLD" };
+    throw new Error(`cannot_buy_from_${product.state}`);
+  }
+
+  await db.product.update({ where: { id: product.id }, data: { state: "SOLD" } });
+  await appendBlock({
+    productId: product.id,
+    action: ACTIONS.BUY,
+    signer: "consumer",
+    payload: JSON.stringify({ by: "consumer" }),
+  });
+  return { ...product, state: "SOLD" };
 }

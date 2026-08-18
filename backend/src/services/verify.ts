@@ -70,7 +70,7 @@ export async function verifyProduct(
   }
 
   const scanCount = await db.scanEvent.count({ where: { productId: product.id } });
-  if (scanCount >= 3) {
+  if (scanCount >= 5) {
     flags.push("scan_flood");
     await createAlert(product.id, "scan_flood", `${product.serial} scanned ${scanCount + 1} times — many copies in circulation.`);
   }

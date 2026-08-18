@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import { api } from "../api";
 import type { Product, VerifyResult } from "../types";
 import { ScanInput } from "../components/ScanInput";
 import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
+import { verifyUrl } from "../utils/qrUrl";
 
 function CheckIcon() {
   return (
@@ -38,26 +40,28 @@ export function Pharmacist() {
     const { data } = await api.get("/custody/products");
     setProducts(data);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
 
   async function verify(qr: string) {
     setError(""); setMsg(""); setResult(null);
     try {
+      // One scan advances the chain: receive (DISTRIBUTED → AT_PHARMACY) then verify.
+      try {
+        const r = await api.post("/custody/receive", { qr });
+        setMsg(`Received ${r.data.serial} — state ${r.data.state}. Custody block appended.`);
+        load();
+      } catch (e: any) {
+        const err = e.response?.data?.error ?? "";
+        if (!err.startsWith("cannot_receive_from_state_")) setError(err);
+      }
       const { data } = await api.post("/verify", { qr, scan: {} });
       setResult(data);
     } catch {
       setError("Verify failed");
-    }
-  }
-
-  async function receive(qr: string) {
-    setError(""); setMsg("");
-    try {
-      const { data } = await api.post("/custody/receive", { qr });
-      setMsg(`Received ${data.serial} — state ${data.state}. Custody block appended.`);
-      load();
-    } catch (e: any) {
-      setError(e.response?.data?.error ?? "Receive failed");
     }
   }
 
@@ -81,7 +85,7 @@ export function Pharmacist() {
     <>
       <div className="page-header">
         <h1>Pharmacist</h1>
-        <p className="muted">Verify before sale: signature check + custody-chain check. Only genuine, chain-complete packs can be dispensed.</p>
+        <p className="muted">Scan a pack to receive it into stock and verify it. Only genuine, chain-complete packs can be dispensed.</p>
       </div>
 
       <div className="stats">
@@ -90,11 +94,8 @@ export function Pharmacist() {
         <div className="stat"><span className="stat-value">{received.length}</span><span className="stat-label">Received</span></div>
       </div>
 
-      <div className="section-title">Receive from distributor</div>
-      <ScanInput onResult={receive} buttonLabel="Receive" placeholder="Scan / paste pack QR (MEDG:...)" />
-
-      <div className="section-title">Verify before sale</div>
-      <ScanInput onResult={verify} buttonLabel="Verify" placeholder="Scan / paste pack QR (MEDG:...)" />
+      <div className="section-title">Scan & verify</div>
+      <ScanInput onResult={verify} buttonLabel="Scan & verify" placeholder="Scan / paste pack QR (MEDG:...)" />
 
       {msg && <p className="success">{msg}</p>}
       {error && <p className="error">{error}</p>}
@@ -128,6 +129,11 @@ export function Pharmacist() {
               </button>
             </div>
           )}
+          {result.verdict === "GENUINE" && result.product.state !== "AT_PHARMACY" && (
+            <div className="row">
+              <div className="row-sub">State {result.product.state} — it must reach AT_PHARMACY (received from distributor) before it can be dispensed.</div>
+            </div>
+          )}
           <div className="group-title" style={{ paddingTop: 6 }}>Ledger journey</div>
           <div style={{ padding: "0.5rem 1.1rem 1rem" }}>
             <Timeline journey={result.journey} />
@@ -135,27 +141,20 @@ export function Pharmacist() {
         </div>
       )}
 
-      <div className="group">
-        <div className="group-title">At my pharmacy ({ready.length})</div>
-        {ready.length === 0 && <div className="row"><div className="row-main"><div className="row-sub">No packs ready to dispense.</div></div></div>}
-        {ready.length > 0 && (
-          <div className="table-wrap">
-            <table className="table-responsive">
-              <thead><tr><th>Serial</th><th>Medicine</th><th>Route</th><th>State</th></tr></thead>
-              <tbody>
-                {ready.map((p) => (
-                  <tr key={p.id}>
-                    <td data-label="Serial">{p.serial}</td>
-                    <td data-label="Medicine">{p.batch?.name}</td>
-                    <td data-label="Route">{p.batch?.route}</td>
-                    <td data-label="State"><StatusBadge state={p.state} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="section-title">At my pharmacy ({ready.length})</div>
+      <div className="grid">
+        {ready.map((p) => (
+          <div key={p.id} className="qr-cell">
+            <div>
+              <QRCodeCanvas value={verifyUrl(p.qr)} size={160} includeMargin />
+            </div>
+            <strong>{p.batch?.name}</strong>
+            <span className="serial">{p.serial}</span>
+            <StatusBadge state={p.state} />
           </div>
-        )}
+        ))}
       </div>
+      {ready.length === 0 && <p className="muted">No packs in stock yet.</p>}
     </>
   );
 }

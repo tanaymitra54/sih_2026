@@ -49,7 +49,7 @@ export function missingHandoffs(state: string, actions: string[]): string[] {
   if ((state === "AT_PHARMACY" || state === "SOLD") && receives < 2) {
     missing.push("distributor + pharmacist hand-off");
   }
-  if (state === "SOLD" && !actions.includes("SELL")) missing.push("sale record");
+  if (state === "SOLD" && !actions.includes("SELL") && !actions.includes("BUY")) missing.push("sale record");
   return missing;
 }
 

@@ -38,6 +38,7 @@ assert.ok(empty.valid, "empty chain is trivially valid");
 
 const full = ["MINT", "RECEIVE", "RECEIVE", "SELL"];
 assert.deepEqual(missingHandoffs("SOLD", full), [], "full chain has no missing hand-offs");
+assert.deepEqual(missingHandoffs("SOLD", ["MINT", "RECEIVE", "RECEIVE", "BUY"]), [], "consumer-bought chain is complete");
 assert.deepEqual(missingHandoffs("AT_PHARMACY", ["MINT", "RECEIVE"]), ["distributor + pharmacist hand-off"]);
 assert.deepEqual(missingHandoffs("SOLD", ["MINT", "RECEIVE", "RECEIVE"]), ["sale record"]);
 assert.deepEqual(missingHandoffs("CREATED", ["MINT"]), [], "CREATED needs no hand-offs yet");
