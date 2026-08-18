@@ -32,8 +32,21 @@ export interface ParsedQr {
 }
 
 export function parseQr(raw: string): ParsedQr | null {
+  if (!raw) return null;
+  // Accept a wrapped URL ("https://host/consumer/verify?qr=MEDG:...") so any
+  // phone camera / Google Lens opens the verify page — then unwrap to the raw MEDG string.
+  const wrapped = extractQrParam(raw);
+  if (wrapped) raw = wrapped;
   if (!raw.startsWith(QR_PREFIX)) return null;
   const [serial, hmac, batchCode] = raw.slice(QR_PREFIX.length).split(":");
   if (!serial || !hmac || !batchCode) return null;
   return { serial, hmac, batchCode };
+}
+
+function extractQrParam(s: string): string | null {
+  try {
+    return new URL(s).searchParams.get("qr");
+  } catch {
+    return null;
+  }
 }

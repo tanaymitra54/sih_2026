@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { VerifyResult } from "../types";
 import { ScanInput } from "../components/ScanInput";
@@ -17,6 +17,12 @@ export function Consumer() {
       setError("Verify failed — did you paste the full MEDG:... text?");
     }
   }
+
+  // Auto-verify when opened via a QR URL (phone camera / Google Lens).
+  useEffect(() => {
+    const qr = new URLSearchParams(window.location.search).get("qr");
+    if (qr) verify(qr);
+  }, []);
 
   return (
     <>

@@ -126,3 +126,5 @@ graph TD
 Full docs live in [`docs/`](docs/). Start with [`docs/architecture.md`](docs/architecture.md),
 then [`docs/innovation.md`](docs/innovation.md) for the pitch, and
 [`docs/presentation/demo-script.md`](docs/presentation/demo-script.md) for the walkthrough.
+For how we handle dropped networks and tampered chains, see
+[`docs/robustness.md`](docs/robustness.md).

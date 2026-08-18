@@ -2,6 +2,18 @@
 
 Setup: `npm run setup && npm run dev`. Two browser tabs ready: one logged-out.
 
+## Optional: live phone scan from another network
+The QR now encodes a URL, so a phone camera / **Google Lens** opens the public
+verify page directly. For the phone to reach your laptop from a *different*
+network, expose the app via a tunnel and do the whole demo under its URL:
+```bash
+npx localtunnel --port 5173     # prints e.g. https://lively-swan.loca.lt
+# open https://lively-swan.loca.lt in the laptop browser for ALL steps —
+# the QRs minted there then point at the tunnel host, so scanning them on a
+# phone (any network) opens the same app.
+```
+Same Wi-Fi instead? Just open `http://<laptop-ip>:5173` (Vite runs with `host: true`).
+
 ## 0:30 — Hook
 > 1M people die a year from fake meds. The weakest link is the last mile — the
 > pharmacy counter. MedGuard makes the pharmacy unable to sell a fake.
