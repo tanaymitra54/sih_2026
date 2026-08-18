@@ -20,9 +20,21 @@ export async function receiveProduct(user: { id: string; role: string; location?
 
   const roleCheck = user.role === "distributor" ? "CREATED" : user.role === "pharmacist" ? "DISTRIBUTED" : null;
   if (!roleCheck) throw new Error("forbidden");
-  if (product.state !== roleCheck) throw new Error(`cannot_receive_from_state_${product.state}_as_${user.role}`);
 
   const nextState = user.role === "distributor" ? "DISTRIBUTED" : "AT_PHARMACY";
+
+  if (product.state !== roleCheck) {
+    // Idempotent retry: a network drop can lose the response after a successful
+    // receive, so the same user scanning the pack again is a success, not an error.
+    if (product.state === nextState) {
+      const last = await db.custodyRecord.findFirst({
+        where: { productId: product.id, action: ACTIONS.RECEIVE },
+        orderBy: { index: "desc" },
+      });
+      if (last?.signer === user.id) return publicProduct({ ...product, state: nextState });
+    }
+    throw new Error(`cannot_receive_from_state_${product.state}_as_${user.role}`);
+  }
 
   const received = await db.$transaction(async (tx) => {
     const updated = await tx.product.updateMany({
@@ -53,7 +65,17 @@ export async function receiveProduct(user: { id: string; role: string; location?
 export async function sellProduct(pharmacistId: string, serial: string) {
   const product = await db.product.findUnique({ where: { serial }, include: { batch: true } });
   if (!product) throw new Error("not_found");
-  if (product.state !== "AT_PHARMACY") throw new Error(`cannot_sell_from_${product.state}`);
+  if (product.state !== "AT_PHARMACY") {
+    // Idempotent retry: the sale already went through but the response was lost.
+    if (product.state === "SOLD") {
+      const last = await db.custodyRecord.findFirst({
+        where: { productId: product.id, action: ACTIONS.SELL },
+        orderBy: { index: "desc" },
+      });
+      if (last?.signer === pharmacistId) return publicProduct({ ...product, state: "SOLD" });
+    }
+    throw new Error(`cannot_sell_from_${product.state}`);
+  }
   if (!verifySignature(product.serial, product.batch.code, product.hmac)) throw new Error("bad_signature");
 
   const blocks = await productBlocks(product.id);
