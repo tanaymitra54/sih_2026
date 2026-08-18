@@ -42,6 +42,15 @@ function Guard({ role, children }: { role: string; children: ReactNode }) {
   return <>{children}</>;
 }
 
+const SUPPLY_CHAIN_ROLES = ["manufacturer", "distributor", "pharmacist"];
+
+function SupplyChainOnly({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!SUPPLY_CHAIN_ROLES.includes(user.role)) return <Navigate to={`/${user.role}`} replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   const { user } = useAuth();
   return (
@@ -56,7 +65,7 @@ export default function App() {
           <Route path="/pharmacist" element={<Guard role="pharmacist"><Pharmacist /></Guard>} />
           <Route path="/consumer" element={<Guard role="consumer"><Consumer /></Guard>} />
           <Route path="/consumer/verify" element={<Consumer />} />
-          <Route path="/alerts" element={<Alerts />} />
+          <Route path="/alerts" element={<SupplyChainOnly><Alerts /></SupplyChainOnly>} />
           <Route path="*" element={<Navigate to={user ? `/${user.role}` : "/login"} replace />} />
         </Routes>
       </main>

@@ -11,7 +11,6 @@ export interface User {
 export interface Product {
   id: string;
   serial: string;
-  hmac: string;
   state: string;
   createdAt: string;
   qr: string;

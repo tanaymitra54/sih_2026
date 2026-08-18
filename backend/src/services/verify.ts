@@ -41,6 +41,11 @@ export async function verifyProduct(
 
   const flags: string[] = [];
 
+  // Sanitize client-supplied scan context before it lands in the ledger/DB.
+  const location = typeof scan.location === "string" ? scan.location.trim().slice(0, 120) || undefined : undefined;
+  const lat = typeof scan.lat === "number" && Number.isFinite(scan.lat) ? scan.lat : null;
+  const lng = typeof scan.lng === "number" && Number.isFinite(scan.lng) ? scan.lng : null;
+
   if (!verifySignature(qr.serial, qr.batchCode, qr.hmac)) {
     flags.push("bad_signature");
     await createAlert(product.id, "bad_signature", `${product.serial}: signature does not verify — copied/forged QR.`);
@@ -64,9 +69,9 @@ export async function verifyProduct(
     await createAlert(product.id, "sold_then_scanned", `${product.serial} scanned after being sold — possible clone/reuse.`);
   }
 
-  if (scan.location && !locationsMatch(product.batch.route, scan.location)) {
+  if (location && !locationsMatch(product.batch.route, location)) {
     flags.push("route_mismatch");
-    await createAlert(product.id, "route_mismatch", `${product.serial} scanned at ${scan.location}, outside declared route ${product.batch.route}.`);
+    await createAlert(product.id, "route_mismatch", `${product.serial} scanned at ${location}, outside declared route ${product.batch.route}.`);
   }
 
   const scanCount = await db.scanEvent.count({ where: { productId: product.id } });
@@ -76,20 +81,23 @@ export async function verifyProduct(
   }
 
   await db.scanEvent.create({
-    data: { productId: product.id, location: scan.location ?? null, lat: scan.lat ?? null, lng: scan.lng ?? null },
+    data: { productId: product.id, location: location ?? null, lat, lng },
   });
   await appendBlock({
     productId: product.id,
     action: ACTIONS.VERIFY,
     signer: "public",
-    payload: JSON.stringify({ location: scan.location ?? "", flags }),
+    payload: JSON.stringify({ location: location ?? "", flags }),
   });
 
-  const verdict = flags.includes("bad_signature") || flags.includes("chain_broken")
-    ? "COUNTERFEIT"
-    : flags.length > 0
-      ? "SUSPICIOUS"
-      : "GENUINE";
+  // bad_signature / chain_broken / missing_handoff are definitive integrity
+  // failures → COUNTERFEIT. Everything else is behavioral → SUSPICIOUS.
+  const verdict =
+    flags.includes("bad_signature") || flags.includes("chain_broken") || flags.includes("missing_handoff")
+      ? "COUNTERFEIT"
+      : flags.length > 0
+        ? "SUSPICIOUS"
+        : "GENUINE";
 
   return {
     verdict,

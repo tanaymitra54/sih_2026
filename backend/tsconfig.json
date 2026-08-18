@@ -9,5 +9,6 @@
     "outDir": "dist",
     "types": ["node"]
   },
-  "include": ["src", "prisma"]
+  "include": ["src", "prisma"],
+  "exclude": ["src/**/*.selfcheck.ts"]
 }

@@ -2,6 +2,7 @@ import { db } from "../config.js";
 import { appendBlock } from "../blockchain/ledger.js";
 import { ACTIONS } from "../blockchain/ledger.js";
 import { encodeQr, generateSerial, signSerial } from "../utils/qr.js";
+import { publicProduct } from "../utils/product.js";
 
 /** Manufacturer mints a batch: creates N products, signs each QR, opens a chain block per product. */
 export async function createBatch(manufacturerId: string, data: { name: string; quantity: number; route: string }) {
@@ -24,7 +25,7 @@ export async function createBatch(manufacturerId: string, data: { name: string; 
       signer: manufacturerId,
       payload: JSON.stringify({ batchCode: code, by: "manufacturer" }),
     });
-    products.push({ ...product, qr: encodeQr(serial, hmac, code) });
+    products.push({ ...publicProduct(product), qr: encodeQr(serial, hmac, code) });
   }
   return { ...batch, products };
 }
@@ -37,15 +38,16 @@ export async function listBatches(manufacturerId: string) {
   });
   return batches.map((b) => ({
     ...b,
-    products: b.products.map((p) => ({ ...p, qr: encodeQr(p.serial, p.hmac, b.code) })),
+    products: b.products.map((p) => ({ ...publicProduct(p), qr: encodeQr(p.serial, p.hmac, b.code) })),
   }));
 }
 
-export async function getBatch(batchId: string) {
+export async function getBatch(batchId: string, manufacturerId: string) {
   const batch = await db.batch.findUnique({ where: { id: batchId }, include: { products: true } });
   if (!batch) throw new Error("not_found");
+  if (batch.manufacturerId !== manufacturerId) throw new Error("not_found");
   return {
     ...batch,
-    products: batch.products.map((p) => ({ ...p, qr: encodeQr(p.serial, p.hmac, batch.code) })),
+    products: batch.products.map((p) => ({ ...publicProduct(p), qr: encodeQr(p.serial, p.hmac, batch.code) })),
   };
 }

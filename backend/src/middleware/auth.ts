@@ -34,6 +34,7 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   const known = new Set([
     "invalid_credentials", "invalid_role", "invalid_quantity", "invalid_qr", "not_found",
     "not_minted", "cannot_receive_from_state_", "cannot_sell_from_", "receive_failed",
+    "bad_signature", "cannot_sell_not_genuine", "weak_password", "invalid_email",
   ]);
   if (known.has(msg) || msg.startsWith("cannot_receive_from_state_") || msg.startsWith("cannot_sell_from_")) {
     res.status(400).json({ error: msg });

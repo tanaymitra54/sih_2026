@@ -20,7 +20,7 @@ r.get("/", requireRole("manufacturer"), async (req: AuthedRequest, res, next) =>
 
 r.get("/:id", requireRole("manufacturer"), async (req: AuthedRequest, res, next) => {
   try {
-    res.json(await getBatch(req.params.id));
+    res.json(await getBatch(req.params.id, req.user!.id));
   } catch (e) { next(e); }
 });
 
