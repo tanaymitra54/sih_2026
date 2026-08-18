@@ -7,6 +7,29 @@ import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
 import { verifyUrl } from "../utils/qrUrl";
 
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+function WarnIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      <path d="M12 9v4M12 17h.01" />
+    </svg>
+  );
+}
+function CrossIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
 export function Pharmacist() {
   const [products, setProducts] = useState<Product[]>([]);
   const [result, setResult] = useState<VerifyResult | null>(null);
@@ -55,55 +78,83 @@ export function Pharmacist() {
   }
 
   const ready = products.filter((p) => p.state === "AT_PHARMACY");
+  const sold = products.filter((p) => p.state === "SOLD");
+  const received = products.filter((p) => p.state !== "CREATED");
 
   return (
     <>
-      <h1>Pharmacist</h1>
-      <p className="muted">Scan a pack to receive it into stock and verify it. Only genuine, chain-complete packs can be dispensed.</p>
+      <div className="page-header">
+        <h1>Pharmacist</h1>
+        <p className="muted">Scan a pack to receive it into stock and verify it. Only genuine, chain-complete packs can be dispensed.</p>
+      </div>
 
+      <div className="stats">
+        <div className="stat"><span className="stat-value">{ready.length}</span><span className="stat-label">Ready to dispense</span></div>
+        <div className="stat accent-green"><span className="stat-value">{sold.length}</span><span className="stat-label">Sold</span></div>
+        <div className="stat"><span className="stat-value">{received.length}</span><span className="stat-label">Received</span></div>
+      </div>
+
+      <div className="section-title">Scan & verify</div>
       <ScanInput onResult={verify} buttonLabel="Scan & verify" placeholder="Scan / paste pack QR (MEDG:...)" />
 
-      {result && (
-        <div className="card">
-          <div className="verdict" style={{ color: result.verdict === "GENUINE" ? "var(--green)" : result.verdict === "SUSPICIOUS" ? "var(--amber)" : "var(--red)" }}>
-            {result.verdict}
-          </div>
-          {result.flags.length > 0 && <p className="muted">Flags: {result.flags.join(", ")}</p>}
-          {result.product && (
-            <>
-              <p>
-                {result.product.name} · {result.product.batchCode} · <StatusBadge state={result.product.state} />
-              </p>
-              {result.verdict === "GENUINE" && result.product.state === "AT_PHARMACY" && (
-                <button className="green" onClick={() => sell(result.product!.serial)}>Dispense & mark SOLD</button>
-              )}
-              {result.verdict === "GENUINE" && result.product.state !== "AT_PHARMACY" && (
-                <p className="muted">State {result.product.state} — it must reach AT_PHARMACY (received from distributor) before it can be dispensed.</p>
-              )}
-            </>
-          )}
-          <Timeline journey={result.journey} />
-        </div>
-      )}
       {msg && <p className="success">{msg}</p>}
       {error && <p className="error">{error}</p>}
 
-      <div className="card">
-        <h2>At my pharmacy ({ready.length})</h2>
-        <div className="grid">
-          {ready.map((p) => (
-            <div key={p.id} className="qr-cell">
-              <div>
-                <QRCodeCanvas value={verifyUrl(p.qr)} size={160} includeMargin />
-              </div>
-              <strong>{p.batch?.name}</strong>
-              <span className="muted">{p.serial}</span>
-              <StatusBadge state={p.state} />
-            </div>
-          ))}
+      {result && (
+        <div className={`verdict ${result.verdict} animate-in`}>
+          <span className="v-icon">
+            {result.verdict === "GENUINE" ? <CheckIcon /> : result.verdict === "SUSPICIOUS" ? <WarnIcon /> : <CrossIcon />}
+          </span>
+          <div className="v-text">
+            <div className="v-label">{result.verdict}</div>
+            {result.flags.length > 0 && <div className="v-sub">Flags: {result.flags.join(", ")}</div>}
+          </div>
         </div>
-        {ready.length === 0 && <p className="muted">No packs in stock yet.</p>}
+      )}
+
+      {result && result.product && (
+        <div className="group">
+          <div className="group-title">Pack</div>
+          <div className="row">
+            <div className="row-main">
+              <div className="row-title">{result.product.name}</div>
+              <div className="row-sub">Batch {result.product.batchCode} · Serial {result.product.serial}</div>
+            </div>
+            <StatusBadge state={result.product.state} />
+          </div>
+          {result.verdict === "GENUINE" && result.product.state === "AT_PHARMACY" && (
+            <div className="row">
+              <button className="btn btn-green" style={{ width: "100%" }} onClick={() => sell(result.product!.serial)}>
+                Dispense & mark SOLD
+              </button>
+            </div>
+          )}
+          {result.verdict === "GENUINE" && result.product.state !== "AT_PHARMACY" && (
+            <div className="row">
+              <div className="row-sub">State {result.product.state} — it must reach AT_PHARMACY (received from distributor) before it can be dispensed.</div>
+            </div>
+          )}
+          <div className="group-title" style={{ paddingTop: 6 }}>Ledger journey</div>
+          <div style={{ padding: "0.5rem 1.1rem 1rem" }}>
+            <Timeline journey={result.journey} />
+          </div>
+        </div>
+      )}
+
+      <div className="section-title">At my pharmacy ({ready.length})</div>
+      <div className="grid">
+        {ready.map((p) => (
+          <div key={p.id} className="qr-cell">
+            <div>
+              <QRCodeCanvas value={verifyUrl(p.qr)} size={160} includeMargin />
+            </div>
+            <strong>{p.batch?.name}</strong>
+            <span className="serial">{p.serial}</span>
+            <StatusBadge state={p.state} />
+          </div>
+        ))}
       </div>
+      {ready.length === 0 && <p className="muted">No packs in stock yet.</p>}
     </>
   );
 }

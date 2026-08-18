@@ -27,31 +27,45 @@ export function Distributor() {
   }
 
   const mine = products.filter((p) => p.state === "DISTRIBUTED");
+  const created = products.filter((p) => p.state === "CREATED");
 
   return (
     <>
-      <h1>Distributor</h1>
-      <p className="muted">Scan each pack on receipt from the manufacturer. Custody transfer is written to the ledger.</p>
+      <div className="page-header">
+        <h1>Distributor</h1>
+        <p className="muted">Scan each pack on receipt from the manufacturer. Custody transfer is written to the ledger.</p>
+      </div>
+
+      <div className="stats">
+        <div className="stat"><span className="stat-value">{mine.length}</span><span className="stat-label">In my custody</span></div>
+        <div className="stat accent-saffron"><span className="stat-value">{created.length}</span><span className="stat-label">Awaiting receive</span></div>
+        <div className="stat"><span className="stat-value">{products.length}</span><span className="stat-label">Total packs</span></div>
+      </div>
 
       <ScanInput onResult={receive} buttonLabel="Receive" placeholder="Scan / paste pack QR (MEDG:...)" />
       {msg && <p className="success">{msg}</p>}
       {error && <p className="error">{error}</p>}
 
-      <div className="card">
-        <h2>In my custody ({mine.length})</h2>
-        <table>
-          <thead><tr><th>Serial</th><th>Medicine</th><th>Route</th><th>State</th></tr></thead>
-          <tbody>
-            {mine.map((p) => (
-              <tr key={p.id}>
-                <td>{p.serial}</td>
-                <td>{p.batch?.name}</td>
-                <td>{p.batch?.route}</td>
-                <td><StatusBadge state={p.state} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="group">
+        <div className="group-title">In my custody ({mine.length})</div>
+        {mine.length === 0 && <div className="row"><div className="row-main"><div className="row-sub">No packs in custody yet.</div></div></div>}
+        {mine.length > 0 && (
+          <div className="table-wrap">
+            <table className="table-responsive">
+              <thead><tr><th>Serial</th><th>Medicine</th><th>Route</th><th>State</th></tr></thead>
+              <tbody>
+                {mine.map((p) => (
+                  <tr key={p.id}>
+                    <td data-label="Serial">{p.serial}</td>
+                    <td data-label="Medicine">{p.batch?.name}</td>
+                    <td data-label="Route">{p.batch?.route}</td>
+                    <td data-label="State"><StatusBadge state={p.state} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   );

@@ -5,6 +5,14 @@ import type { Batch } from "../types";
 import { StatusBadge } from "../components/StatusBadge";
 import { verifyUrl } from "../utils/qrUrl";
 
+function ChevronIcon() {
+  return (
+    <svg className="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 export function Manufacturer() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [name, setName] = useState("Paracetamol 500mg");
@@ -37,45 +45,50 @@ export function Manufacturer() {
 
   return (
     <>
-      <h1>Manufacturer</h1>
-      <p className="muted">Mint a batch: each pack gets a unique serial + HMAC-signed QR, logged on the ledger.</p>
-
-      <div className="card">
-        <h2>Create & mint batch</h2>
-        <div className="grid" style={{ gridTemplateColumns: "2fr 1fr 1fr" }}>
-          <div><label>Medicine name</label><input value={name} onChange={(e) => setName(e.target.value)} /></div>
-          <div><label>Quantity</label><input type="number" value={quantity} min={1} onChange={(e) => setQuantity(Number(e.target.value))} /></div>
-          <div><label>Declared route</label><input value={route} onChange={(e) => setRoute(e.target.value)} /></div>
-        </div>
-        {msg && <p className="success">{msg}</p>}
-        <button onClick={create}>Mint batch</button>
+      <div className="page-header">
+        <h1>Manufacturer</h1>
+        <p className="muted">Mint a batch: each pack gets a unique serial + HMAC-signed QR, logged on the ledger.</p>
       </div>
 
       <div className="card">
-        <h2>Batches</h2>
-        {batches.length === 0 && <p className="muted">No batches yet.</p>}
+        <h2>Create & mint batch</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0 1rem" }}>
+          <div className="field"><label>Medicine name</label><input value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="field"><label>Quantity</label><input type="number" value={quantity} min={1} onChange={(e) => setQuantity(Number(e.target.value))} /></div>
+          <div className="field"><label>Declared route</label><input value={route} onChange={(e) => setRoute(e.target.value)} /></div>
+        </div>
+        {msg && <p className="success">{msg}</p>}
+        <button className="btn" onClick={create}>Mint batch</button>
+      </div>
+
+      <div className="group">
+        <div className="group-title">Batches ({batches.length})</div>
+        {batches.length === 0 && <div className="row"><div className="row-main"><div className="row-sub">No batches yet.</div></div></div>}
         {batches.map((b) => (
-          <div key={b.id} style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "0.5rem" }}>
-            <span>{b.name} · {b.code} · route {b.route}</span>
-            <span className="muted">{b.products.length} packs</span>
-            <button className="secondary" onClick={() => setSelected(b)}>View QRs</button>
+          <div key={b.id} className="row clickable" onClick={() => setSelected(b)}>
+            <div className="row-main">
+              <div className="row-title">{b.name}</div>
+              <div className="row-sub">{b.code} · route {b.route} · {b.products.length} packs</div>
+            </div>
+            <ChevronIcon />
           </div>
         ))}
       </div>
 
       {selected && (
-        <div className="card">
+        <div className="card animate-in">
           <h2>Signed QRs — {selected.name} ({selected.code})</h2>
           <p className="muted">Scan with any phone camera / Google Lens — it opens the public Verify page. Pasting the text also works.</p>
           <div className="grid">
             {selected.products.map((p) => (
               <div key={p.id} className="qr-cell">
                 <div id={`qr-${p.id}`}>
-                  <QRCodeCanvas value={verifyUrl(p.qr)} size={200} includeMargin />
+                  <QRCodeCanvas value={verifyUrl(p.qr)} size={160} includeMargin />
                 </div>
                 <StatusBadge state={p.state} />
-                <span className="muted">{p.serial}</span>
+                <span className="serial">{p.serial}</span>
                 <button
+                  className="btn btn-ghost small"
                   onClick={() => {
                     const c = document.getElementById(`qr-${p.id}`)?.querySelector("canvas") as HTMLCanvasElement | null;
                     const a = document.createElement("a");
