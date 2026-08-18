@@ -20,6 +20,17 @@ export async function receiveProduct(user: { id: string; role: string }, qrText:
   } else if (user.role === "pharmacist" && product.state === "DISTRIBUTED") {
     nextState = "AT_PHARMACY";
   } else {
+    // Idempotent retry: a network drop can lose the response after a successful
+    // receive, so the same user scanning the pack again is a success, not an error.
+    const target = user.role === "distributor" ? "DISTRIBUTED"
+                 : user.role === "pharmacist" ? "AT_PHARMACY" : null;
+    if (target && product.state === target) {
+      const last = await db.custodyRecord.findFirst({
+        where: { productId: product.id, action: ACTIONS.RECEIVE },
+        orderBy: { index: "desc" },
+      });
+      if (last?.signer === user.id) return { ...product, state: product.state };
+    }
     throw new Error(`cannot_receive_from_state_${product.state}_as_${user.role}`);
   }
 
@@ -38,7 +49,17 @@ export async function receiveProduct(user: { id: string; role: string }, qrText:
 export async function sellProduct(pharmacistId: string, serial: string) {
   const product = await db.product.findUnique({ where: { serial } });
   if (!product) throw new Error("not_found");
-  if (product.state !== "AT_PHARMACY") throw new Error(`cannot_sell_from_${product.state}`);
+  if (product.state !== "AT_PHARMACY") {
+    // Idempotent retry: the sale already went through but the response was lost.
+    if (product.state === "SOLD") {
+      const last = await db.custodyRecord.findFirst({
+        where: { productId: product.id, action: ACTIONS.SELL },
+        orderBy: { index: "desc" },
+      });
+      if (last?.signer === pharmacistId) return { ...product, state: "SOLD" };
+    }
+    throw new Error(`cannot_sell_from_${product.state}`);
+  }
 
   await db.product.update({ where: { id: product.id }, data: { state: "SOLD" } });
   await appendBlock({
