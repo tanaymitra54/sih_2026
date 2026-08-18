@@ -3,6 +3,7 @@ import { api } from "../api";
 import type { Product } from "../types";
 import { ScanInput } from "../components/ScanInput";
 import { StatusBadge } from "../components/StatusBadge";
+import { BoxIcon, TruckIcon } from "../components/icons";
 
 export function Distributor() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -37,9 +38,9 @@ export function Distributor() {
       </div>
 
       <div className="stats">
-        <div className="stat"><span className="stat-value">{mine.length}</span><span className="stat-label">In my custody</span></div>
-        <div className="stat accent-saffron"><span className="stat-value">{created.length}</span><span className="stat-label">Awaiting receive</span></div>
-        <div className="stat"><span className="stat-value">{products.length}</span><span className="stat-label">Total packs</span></div>
+        <div className="stat"><span className="stat-icon"><TruckIcon /></span><span className="stat-value">{mine.length}</span><span className="stat-label">In my custody</span></div>
+        <div className="stat accent-saffron"><span className="stat-icon"><BoxIcon /></span><span className="stat-value">{created.length}</span><span className="stat-label">Awaiting receive</span></div>
+        <div className="stat"><span className="stat-icon"><BoxIcon /></span><span className="stat-value">{products.length}</span><span className="stat-label">Total packs</span></div>
       </div>
 
       <ScanInput onResult={receive} buttonLabel="Receive" placeholder="Scan / paste pack QR (MEDG:...)" />
