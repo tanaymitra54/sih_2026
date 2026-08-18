@@ -3,6 +3,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { api } from "../api";
 import type { Batch } from "../types";
 import { StatusBadge } from "../components/StatusBadge";
+import { verifyUrl } from "../utils/qrUrl";
 
 export function Manufacturer() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -11,9 +12,6 @@ export function Manufacturer() {
   const [route, setRoute] = useState("Delhi");
   const [selected, setSelected] = useState<Batch | null>(null);
   const [msg, setMsg] = useState("");
-
-  // QR encodes a URL so a phone camera / Google Lens opens the public verify page.
-  const verifyUrl = (qr: string) => `${location.origin}/consumer/verify?qr=${encodeURIComponent(qr)}`;
 
   async function load() {
     const { data } = await api.get("/batches");

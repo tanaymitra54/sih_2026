@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import { api } from "../api";
 import type { Product, VerifyResult } from "../types";
 import { ScanInput } from "../components/ScanInput";
 import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
+import { verifyUrl } from "../utils/qrUrl";
 
 export function Pharmacist() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -15,7 +17,11 @@ export function Pharmacist() {
     const { data } = await api.get("/custody/products");
     setProducts(data);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
 
   async function verify(qr: string) {
     setError(""); setMsg(""); setResult(null);
@@ -84,19 +90,19 @@ export function Pharmacist() {
 
       <div className="card">
         <h2>At my pharmacy ({ready.length})</h2>
-        <table>
-          <thead><tr><th>Serial</th><th>Medicine</th><th>Route</th><th>State</th></tr></thead>
-          <tbody>
-            {ready.map((p) => (
-              <tr key={p.id}>
-                <td>{p.serial}</td>
-                <td>{p.batch?.name}</td>
-                <td>{p.batch?.route}</td>
-                <td><StatusBadge state={p.state} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="grid">
+          {ready.map((p) => (
+            <div key={p.id} className="qr-cell">
+              <div>
+                <QRCodeCanvas value={verifyUrl(p.qr)} size={160} includeMargin />
+              </div>
+              <strong>{p.batch?.name}</strong>
+              <span className="muted">{p.serial}</span>
+              <StatusBadge state={p.state} />
+            </div>
+          ))}
+        </div>
+        {ready.length === 0 && <p className="muted">No packs in stock yet.</p>}
       </div>
     </>
   );
