@@ -1,7 +1,7 @@
 import { db } from "../config.js";
 import { GENESIS_HASH, hashBlock, productChainValid, type Block, type BlockInput } from "./ledger-core.js";
 
-export const ACTIONS = { MINT: "MINT", RECEIVE: "RECEIVE", VERIFY: "VERIFY", SELL: "SELL" } as const;
+export const ACTIONS = { MINT: "MINT", RECEIVE: "RECEIVE", VERIFY: "VERIFY", SELL: "SELL", BUY: "BUY" } as const;
 
 /** The single most recent block across all products. */
 async function lastGlobalBlock(): Promise<Block | null> {

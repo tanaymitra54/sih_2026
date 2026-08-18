@@ -78,3 +78,22 @@ export async function productsByState(state?: string) {
     orderBy: { createdAt: "desc" },
   });
 }
+
+/** Consumer buys a genuine pack at a pharmacy — closes the chain as SOLD. */
+export async function buyProduct(serial: string) {
+  const product = await db.product.findUnique({ where: { serial } });
+  if (!product) throw new Error("not_found");
+  if (product.state !== "AT_PHARMACY") {
+    if (product.state === "SOLD") return { ...product, state: "SOLD" };
+    throw new Error(`cannot_buy_from_${product.state}`);
+  }
+
+  await db.product.update({ where: { id: product.id }, data: { state: "SOLD" } });
+  await appendBlock({
+    productId: product.id,
+    action: ACTIONS.BUY,
+    signer: "consumer",
+    payload: JSON.stringify({ by: "consumer" }),
+  });
+  return { ...product, state: "SOLD" };
+}

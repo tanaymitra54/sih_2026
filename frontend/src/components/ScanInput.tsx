@@ -7,7 +7,7 @@ export function ScanInput({ onResult, placeholder = "Paste QR text or scan", but
   buttonLabel?: string;
 }) {
   const [text, setText] = useState("");
-  const { scanning, setScanning, readerId } = useQrScanner((t) => {
+  const { scanning, setScanning, readerId, error } = useQrScanner((t) => {
     setText(t);
     onResult(t);
   });
@@ -26,6 +26,7 @@ export function ScanInput({ onResult, placeholder = "Paste QR text or scan", but
           {scanning ? "Stop camera" : "Scan with camera"}
         </button>
       </div>
+      {error && <p className="error">{error}</p>}
       {scanning && <div id={readerId} style={{ maxWidth: 320 }} />}
     </div>
   );

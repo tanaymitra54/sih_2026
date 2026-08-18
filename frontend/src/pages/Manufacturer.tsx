@@ -20,12 +20,21 @@ export function Manufacturer() {
     setBatches(data);
     setSelected((s) => (s ? data.find((b: Batch) => b.id === s.id) ?? null : null));
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
 
   async function create() {
-    await api.post("/batches", { name, quantity, route });
-    setName(""); setQuantity(5); setMsg("Batch minted — each pack got a signed QR.");
-    await load();
+    setMsg("");
+    try {
+      await api.post("/batches", { name, quantity, route });
+      setName(""); setQuantity(5); setMsg("Batch minted — each pack got a signed QR.");
+      await load();
+    } catch (e: any) {
+      setMsg(e.response?.data?.error ?? "Mint failed — try logging out and back in.");
+    }
   }
 
   return (

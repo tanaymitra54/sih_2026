@@ -33,9 +33,9 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   const msg = err.message;
   const known = new Set([
     "invalid_credentials", "invalid_role", "invalid_quantity", "invalid_qr", "not_found",
-    "not_minted", "cannot_receive_from_state_", "cannot_sell_from_", "receive_failed",
+    "not_minted", "cannot_receive_from_state_", "cannot_sell_from_", "cannot_buy_from_", "receive_failed",
   ]);
-  if (known.has(msg) || msg.startsWith("cannot_receive_from_state_") || msg.startsWith("cannot_sell_from_")) {
+  if (known.has(msg) || msg.startsWith("cannot_receive_from_state_") || msg.startsWith("cannot_sell_from_") || msg.startsWith("cannot_buy_from_")) {
     res.status(400).json({ error: msg });
     return;
   }
