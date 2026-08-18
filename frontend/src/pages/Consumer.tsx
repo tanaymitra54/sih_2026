@@ -2,7 +2,45 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { VerifyResult } from "../types";
 import { ScanInput } from "../components/ScanInput";
+import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+
+function WarnIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      <path d="M12 9v4M12 17h.01" />
+    </svg>
+  );
+}
+
+function CrossIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function VerdictIcon({ verdict }: { verdict: string }) {
+  if (verdict === "GENUINE") return <CheckIcon />;
+  if (verdict === "SUSPICIOUS") return <WarnIcon />;
+  return <CrossIcon />;
+}
+
+const VERDICT_COPY: Record<string, { label: string; sub: string }> = {
+  GENUINE: { label: "Genuine", sub: "Signature valid · chain intact · verified on the ledger" },
+  SUSPICIOUS: { label: "Suspicious", sub: "Review the flags below — do not dispense without checking" },
+  COUNTERFEIT: { label: "Counterfeit", sub: "This pack failed verification — do not consume or sell it" },
+};
 
 export function Consumer() {
   const [result, setResult] = useState<VerifyResult | null>(null);
@@ -24,36 +62,70 @@ export function Consumer() {
     if (qr) verify(qr);
   }, []);
 
+  const copy = result ? VERDICT_COPY[result.verdict] : null;
+
   return (
     <>
-      <h1>Consumer Verification</h1>
-      <p className="muted">Scan the QR on your medicine pack to see its full journey — mint, distribution, pharmacy — and confirm it is genuine.</p>
+      <div className="page-header">
+        <h1>Verify a medicine</h1>
+        <p className="muted">Scan the QR on your pack to see its full journey — mint, distribution, pharmacy — and confirm it is genuine. No login or app needed.</p>
+      </div>
 
       <ScanInput onResult={verify} buttonLabel="Check" placeholder="Scan / paste the MEDG:... QR text" />
 
       {error && <p className="error">{error}</p>}
 
-      {result && (
-        <div className="card">
-          <div
-            className="verdict"
-            style={{ color: result.verdict === "GENUINE" ? "var(--green)" : result.verdict === "SUSPICIOUS" ? "var(--amber)" : "var(--red)" }}
-          >
-            {result.verdict}
+      {result && copy && (
+        <div className={`verdict ${result.verdict} animate-in`}>
+          <span className="v-icon"><VerdictIcon verdict={result.verdict} /></span>
+          <div className="v-text">
+            <div className="v-label">{copy.label}</div>
+            <div className="v-sub">{copy.sub}</div>
           </div>
-          {result.product ? (
-            <>
-              <p>
-                <strong>{result.product.name}</strong> · batch {result.product.batchCode} · serial {result.product.serial} ·{" "}
-                state <strong>{result.product.state}</strong>
-              </p>
-              {result.flags.length > 0 && <p className="muted">Notes: {result.flags.join(", ")}</p>}
-            </>
-          ) : (
-            <p className="muted">No product matches this code — it was never minted by a registered manufacturer.</p>
+        </div>
+      )}
+
+      {result && result.product && (
+        <div className="group">
+          <div className="group-title">Pack</div>
+          <div className="row">
+            <div className="row-main">
+              <div className="row-title">{result.product.name}</div>
+              <div className="row-sub">Batch {result.product.batchCode} · Serial {result.product.serial}</div>
+            </div>
+            <StatusBadge state={result.product.state} />
+          </div>
+          {result.flags.length > 0 && (
+            <div className="row">
+              <div className="row-main">
+                <div className="row-title">Flags</div>
+                <div className="chips" style={{ marginTop: 6 }}>
+                  {result.flags.map((f) => (
+                    <span key={f} className={`chip ${f.includes("signature") || f.includes("broken") || f.includes("handoff") ? "danger" : "warn"}`}>{f}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
-          <h2>Journey on the ledger</h2>
-          <Timeline journey={result.journey} />
+        </div>
+      )}
+
+      {result && !result.product && (
+        <div className="verdict COUNTERFEIT">
+          <span className="v-icon"><CrossIcon /></span>
+          <div className="v-text">
+            <div className="v-label">Unknown code</div>
+            <div className="v-sub">This code was never minted by a registered manufacturer.</div>
+          </div>
+        </div>
+      )}
+
+      {result && (
+        <div className="group">
+          <div className="group-title">Journey on the ledger</div>
+          <div style={{ padding: "0.5rem 1.1rem 1rem" }}>
+            <Timeline journey={result.journey} />
+          </div>
         </div>
       )}
     </>
