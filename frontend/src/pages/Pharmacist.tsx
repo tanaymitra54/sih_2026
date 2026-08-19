@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
 import { api } from "../api";
+import { useI18n } from "../i18n";
 import type { Product, VerifyResult } from "../types";
 import { ScanInput } from "../components/ScanInput";
 import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
+import { Confetti } from "../components/Confetti";
+import { JourneyMap } from "../components/JourneyMap";
+import { CountStat } from "../components/CountStat";
 import { verifyUrl } from "../utils/qrUrl";
 import { CartIcon, CheckIcon, CrossIcon, StoreIcon, TruckIcon, WarnIcon } from "../components/icons";
 
 export function Pharmacist() {
   const [products, setProducts] = useState<Product[]>([]);
   const [result, setResult] = useState<VerifyResult | null>(null);
-  const [msg, setMsg] = useState("");
-  const [error, setError] = useState("");
+  const { t } = useI18n();
 
   async function load() {
     const { data } = await api.get("/custody/products");
@@ -20,38 +24,37 @@ export function Pharmacist() {
   }
   useEffect(() => {
     load();
-    const t = setInterval(load, 5000);
-    return () => clearInterval(t);
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   async function verify(qr: string) {
-    setError(""); setMsg(""); setResult(null);
+    setResult(null);
     try {
       // One scan advances the chain: receive (DISTRIBUTED → AT_PHARMACY) then verify.
       try {
         const r = await api.post("/custody/receive", { qr });
-        setMsg(`Received ${r.data.serial} — state ${r.data.state}. Custody block appended.`);
+        toast.success(`Received ${r.data.serial} — state ${r.data.state}. Custody block appended.`);
         load();
       } catch (e: any) {
         const err = e.response?.data?.error ?? "";
-        if (!err.startsWith("cannot_receive_from_state_")) setError(err);
+        if (!err.startsWith("cannot_receive_from_state_")) toast.error(err);
       }
       const { data } = await api.post("/verify", { qr, scan: {} });
       setResult(data);
     } catch {
-      setError("Verify failed");
+      toast.error("Verify failed");
     }
   }
 
   async function sell(serial: string) {
-    setError(""); setMsg("");
     try {
       const { data } = await api.post("/custody/sell", { serial });
-      setMsg(`Dispensed ${data.serial} — state SOLD. Chain closed.`);
+      toast.success(`Dispensed ${data.serial} — state SOLD. Chain closed.`);
       setResult(null);
       load();
     } catch (e: any) {
-      setError(e.response?.data?.error ?? "Sell failed");
+      toast.error(e.response?.data?.error ?? "Sell failed");
     }
   }
 
@@ -62,37 +65,37 @@ export function Pharmacist() {
   return (
     <>
       <div className="page-header">
-        <h1>Pharmacist</h1>
-        <p className="muted">Scan a pack to receive it into stock and verify it. Only genuine, chain-complete packs can be dispensed.</p>
+        <h1>{t("pharma.title")}</h1>
+        <p className="muted">{t("pharma.subtitle")}</p>
       </div>
 
       <div className="stats">
-        <div className="stat"><span className="stat-icon"><StoreIcon /></span><span className="stat-value">{ready.length}</span><span className="stat-label">Ready to dispense</span></div>
-        <div className="stat accent-green"><span className="stat-icon"><CartIcon /></span><span className="stat-value">{sold.length}</span><span className="stat-label">Sold</span></div>
-        <div className="stat"><span className="stat-icon"><TruckIcon /></span><span className="stat-value">{received.length}</span><span className="stat-label">Received</span></div>
+        <CountStat value={ready.length} label={t("pharma.ready")} icon={<StoreIcon />} />
+        <CountStat value={sold.length} label={t("pharma.sold")} icon={<CartIcon />} className="accent-green" />
+        <CountStat value={received.length} label={t("pharma.received")} icon={<TruckIcon />} />
       </div>
 
-      <div className="section-title">Scan & verify</div>
-      <ScanInput onResult={verify} buttonLabel="Scan & verify" placeholder="Scan / paste pack QR (MEDG:...)" />
-
-      {msg && <p className="success">{msg}</p>}
-      {error && <p className="error">{error}</p>}
+      <div className="section-title">{t("pharma.scanVerify")}</div>
+      <ScanInput onResult={verify} buttonLabel={t("pharma.scanVerify")} placeholder="Scan / paste pack QR (MEDG:...)" />
 
       {result && (
-        <div className={`verdict ${result.verdict} animate-in`}>
-          <span className="v-icon">
-            {result.verdict === "GENUINE" ? <CheckIcon /> : result.verdict === "SUSPICIOUS" ? <WarnIcon /> : <CrossIcon />}
-          </span>
-          <div className="v-text">
-            <div className="v-label">{result.verdict}</div>
-            {result.flags.length > 0 && <div className="v-sub">Flags: {result.flags.join(", ")}</div>}
+        <div className="relative">
+          {result.verdict === "GENUINE" && <Confetti />}
+          <div className={`verdict ${result.verdict} animate-in ${result.verdict === "COUNTERFEIT" ? "shake" : ""}`}>
+            <span className="v-icon">
+              {result.verdict === "GENUINE" ? <CheckIcon /> : result.verdict === "SUSPICIOUS" ? <WarnIcon /> : <CrossIcon />}
+            </span>
+            <div className="v-text">
+              <div className="v-label">{t(`verdict.${result.verdict}`)}</div>
+              {result.flags.length > 0 && <div className="v-sub">Flags: {result.flags.join(", ")}</div>}
+            </div>
           </div>
         </div>
       )}
 
       {result && result.product && (
         <div className="group">
-          <div className="group-title">Pack</div>
+          <div className="group-title">{t("consumer.pack")}</div>
           <div className="row">
             <div className="row-main">
               <div className="row-title">{result.product.name}</div>
@@ -103,7 +106,7 @@ export function Pharmacist() {
           {result.verdict === "GENUINE" && result.product.state === "AT_PHARMACY" && (
             <div className="row">
               <button className="btn btn-green" style={{ width: "100%" }} onClick={() => sell(result.product!.serial)}>
-                <CartIcon /> Dispense & mark SOLD
+                <CartIcon /> {t("pharma.dispense")}
               </button>
             </div>
           )}
@@ -112,14 +115,17 @@ export function Pharmacist() {
               <div className="row-sub">State {result.product.state} — it must reach AT_PHARMACY (received from distributor) before it can be dispensed.</div>
             </div>
           )}
-          <div className="group-title" style={{ paddingTop: 6 }}>Ledger journey</div>
+          <div className="group-title" style={{ paddingTop: 6 }}>{t("consumer.journey")}</div>
           <div style={{ padding: "0.5rem 1.1rem 1rem" }}>
-            <Timeline journey={result.journey} />
+            <JourneyMap journey={result.journey} />
+            <div style={{ marginTop: 12 }}>
+              <Timeline journey={result.journey} />
+            </div>
           </div>
         </div>
       )}
 
-      <div className="section-title">At my pharmacy ({ready.length})</div>
+      <div className="section-title">{t("pharma.atPharmacy")} ({ready.length})</div>
       <div className="grid">
         {ready.map((p) => (
           <div key={p.id} className="qr-cell">
@@ -132,7 +138,7 @@ export function Pharmacist() {
           </div>
         ))}
       </div>
-      {ready.length === 0 && <p className="muted">No packs in stock yet.</p>}
+      {ready.length === 0 && <p className="muted">{t("pharma.noStock")}</p>}
     </>
   );
 }

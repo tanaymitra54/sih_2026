@@ -24,6 +24,8 @@ export interface Batch {
   name: string;
   route: string;
   quantity: number;
+  recalled?: boolean;
+  recalledAt?: string | null;
   createdAt: string;
   products: Product[];
 }

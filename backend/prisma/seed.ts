@@ -4,6 +4,7 @@ import { db } from "../src/config.js";
 import { encodeQr, generateSerial, signSerial } from "../src/utils/qr.js";
 import { appendBlock } from "../src/blockchain/ledger.js";
 import { ACTIONS } from "../src/blockchain/ledger.js";
+import { resolveCoords } from "../src/utils/geo.js";
 
 async function main() {
   const password = await bcrypt.hash("demo1234", 10);
@@ -32,11 +33,12 @@ async function main() {
     const product = await db.product.create({
       data: { serial, hmac, batchId: batch.id, state: "CREATED" },
     });
+    const coords = resolveCoords(mfr.location);
     await appendBlock({
       productId: product.id,
       action: ACTIONS.MINT,
       signer: mfr.id,
-      payload: JSON.stringify({ batchCode: code, by: "manufacturer" }),
+      payload: JSON.stringify({ batchCode: code, by: "manufacturer", location: mfr.location ?? "", ...(coords ?? {}) }),
     });
     console.log(`  minted ${serial} -> ${encodeQr(serial, hmac, code)}`);
   }

@@ -1,26 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "../api";
+import { useI18n } from "../i18n";
+import { HotspotGrid } from "../components/HotspotGrid";
 import { AlertIcon } from "../components/icons";
 
 interface AlertItem { id: string; type: string; message: string; createdAt: string; product: { serial: string } | null; }
 
 export function Alerts() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const { t } = useI18n();
 
   useEffect(() => {
     api.get("/reports/alerts").then(({ data }) => setAlerts(data));
   }, []);
 
+  const byType = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const a of alerts) counts.set(a.type, (counts.get(a.type) ?? 0) + 1);
+    return [...counts.entries()].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count).slice(0, 8);
+  }, [alerts]);
+
   return (
     <>
       <div className="page-header">
-        <h1>Alert feed</h1>
-        <p className="muted">Anomalies raised automatically: copied QRs, broken chains, scans outside the declared route, scans after sale.</p>
+        <h1>{t("alerts.title")}</h1>
+        <p className="muted">{t("alerts.subtitle")}</p>
       </div>
+
+      {byType.length > 0 && (
+        <div className="card">
+          <h2>Alerts by type</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={byType} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline)" />
+              <XAxis dataKey="type" tick={{ fontSize: 11 }} interval={0} angle={-18} textAnchor="end" height={50} stroke="var(--ink-secondary)" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="var(--ink-secondary)" />
+              <Tooltip cursor={{ fill: "var(--card-secondary)" }} contentStyle={{ background: "var(--card)", border: "1px solid var(--hairline)", borderRadius: 8, color: "var(--ink)" }} />
+              <Bar dataKey="count" fill="#e67e22" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      <HotspotGrid />
 
       <div className="group">
         {alerts.length === 0 && (
-          <div className="row"><div className="row-main"><div className="row-sub">No alerts. All clean.</div></div></div>
+          <div className="row"><div className="row-main"><div className="row-sub">{t("alerts.none")}</div></div></div>
         )}
         {alerts.map((a) => (
           <div key={a.id} className="row alert-row">

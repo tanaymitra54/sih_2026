@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { auth, type AuthedRequest } from "../middleware/auth.js";
-import { createReport, listAlerts, listReports } from "../services/reports.js";
+import { createReport, listAlerts, listReports, heatmap } from "../services/reports.js";
 
 const r = Router();
 
@@ -19,6 +19,12 @@ r.get("/reports", auth, async (_req, res, next) => {
 r.get("/alerts", auth, async (_req, res, next) => {
   try {
     res.json(await listAlerts());
+  } catch (e) { next(e); }
+});
+
+r.get("/heatmap", auth, async (_req, res, next) => {
+  try {
+    res.json(await heatmap());
   } catch (e) { next(e); }
 });
 

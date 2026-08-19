@@ -1,7 +1,8 @@
 import { db } from "../config.js";
-import { appendBlock } from "../blockchain/ledger.js";
+import { appendBlock, productBlocks } from "../blockchain/ledger.js";
 import { ACTIONS } from "../blockchain/ledger.js";
 import { parseQr, encodeQr } from "../utils/qr.js";
+import { resolveCoords } from "../utils/geo.js";
 
 /**
  * Distributor or pharmacist receives custody of a product by scanning its QR.
@@ -35,11 +36,13 @@ export async function receiveProduct(user: { id: string; role: string }, qrText:
   }
 
   await db.product.update({ where: { id: product.id }, data: { state: nextState } });
+  const actor = await db.user.findUnique({ where: { id: user.id } });
+  const coords = resolveCoords(actor?.location);
   await appendBlock({
     productId: product.id,
     action: ACTIONS.RECEIVE,
     signer: user.id,
-    payload: JSON.stringify({ role: user.role, location: user.location ?? "" }),
+    payload: JSON.stringify({ role: user.role, location: actor?.location ?? "", ...(coords ?? {}) }),
   });
 
   return { ...product, state: nextState };
@@ -62,11 +65,13 @@ export async function sellProduct(pharmacistId: string, serial: string) {
   }
 
   await db.product.update({ where: { id: product.id }, data: { state: "SOLD" } });
+  const pharma = await db.user.findUnique({ where: { id: pharmacistId } });
+  const coords = resolveCoords(pharma?.location);
   await appendBlock({
     productId: product.id,
     action: ACTIONS.SELL,
     signer: pharmacistId,
-    payload: JSON.stringify({ by: "pharmacist" }),
+    payload: JSON.stringify({ by: "pharmacist", location: pharma?.location ?? "", ...(coords ?? {}) }),
   });
   return { ...product, state: "SOLD" };
 }
@@ -78,6 +83,25 @@ export async function productsByState(state?: string) {
     orderBy: { createdAt: "desc" },
   });
   return products.map((p) => ({ ...p, qr: encodeQr(p.serial, p.hmac, p.batch.code) }));
+}
+
+/** Read-only journey for a pack — no VERIFY block is appended. */
+export async function journeyForSerial(serial: string) {
+  const product = await db.product.findUnique({ where: { serial }, include: { batch: true } });
+  if (!product) throw new Error("not_found");
+  const blocks = await productBlocks(product.id);
+  return {
+    product: { serial: product.serial, name: product.batch.name, batchCode: product.batch.code, state: product.state },
+    journey: blocks.map((b) => ({ action: b.action, signer: b.signer, payload: safeParse(b.payload), timestamp: b.timestamp })),
+  };
+}
+
+function safeParse(s: string): Record<string, unknown> {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return {};
+  }
 }
 
 /** Consumer buys a genuine pack at a pharmacy — closes the chain as SOLD. */

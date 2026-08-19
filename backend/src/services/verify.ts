@@ -35,7 +35,7 @@ export async function verifyProduct(
   });
 
   if (!product) {
-    await createAlert(null, "unminted_serial", `Serial ${qr.serial} was never minted.`);
+    await createAlert(null, "unminted_serial", `Serial ${qr.serial} was never minted.`, scan.location);
     return { verdict: "COUNTERFEIT", flags: ["not_minted"], product: null, journey: [] };
   }
 
@@ -43,7 +43,12 @@ export async function verifyProduct(
 
   if (!verifySignature(qr.serial, qr.batchCode, qr.hmac)) {
     flags.push("bad_signature");
-    await createAlert(product.id, "bad_signature", `${product.serial}: signature does not verify — copied/forged QR.`);
+    await createAlert(product.id, "bad_signature", `${product.serial}: signature does not verify — copied/forged QR.`, scan.location);
+  }
+
+  if (product.batch.recalled) {
+    flags.push("batch_recalled");
+    await createAlert(product.id, "batch_recalled", `${product.serial} belongs to recalled batch ${product.batch.code}.`, scan.location);
   }
 
   const blocks = await productBlocks(product.id);
@@ -56,34 +61,37 @@ export async function verifyProduct(
   const missing = missingHandoffs(product.state, blocks.map((b) => b.action));
   if (missing.length) {
     flags.push("missing_handoff");
-    await createAlert(product.id, "missing_handoff", `${product.serial}: chain missing ${missing.join(", ")} for state ${product.state}.`);
+    await createAlert(product.id, "missing_handoff", `${product.serial}: chain missing ${missing.join(", ")} for state ${product.state}.`, scan.location);
   }
 
   if (product.state === "SOLD") {
     flags.push("scanned_after_sold");
-    await createAlert(product.id, "sold_then_scanned", `${product.serial} scanned after being sold — possible clone/reuse.`);
+    await createAlert(product.id, "sold_then_scanned", `${product.serial} scanned after being sold — possible clone/reuse.`, scan.location);
   }
 
   if (scan.location && !locationsMatch(product.batch.route, scan.location)) {
     flags.push("route_mismatch");
-    await createAlert(product.id, "route_mismatch", `${product.serial} scanned at ${scan.location}, outside declared route ${product.batch.route}.`);
+    await createAlert(product.id, "route_mismatch", `${product.serial} scanned at ${scan.location}, outside declared route ${product.batch.route}.`, scan.location);
   }
 
   const scanCount = await db.scanEvent.count({ where: { productId: product.id } });
   if (scanCount >= 5) {
     flags.push("scan_flood");
-    await createAlert(product.id, "scan_flood", `${product.serial} scanned ${scanCount + 1} times — many copies in circulation.`);
+    await createAlert(product.id, "scan_flood", `${product.serial} scanned ${scanCount + 1} times — many copies in circulation.`, scan.location);
   }
 
   await db.scanEvent.create({
     data: { productId: product.id, location: scan.location ?? null, lat: scan.lat ?? null, lng: scan.lng ?? null },
   });
-  await appendBlock({
+  const scanCoords = scan.lat != null && scan.lng != null ? { lat: scan.lat, lng: scan.lng } : {};
+  const verifyBlock = await appendBlock({
     productId: product.id,
     action: ACTIONS.VERIFY,
     signer: "public",
-    payload: JSON.stringify({ location: scan.location ?? "", flags }),
+    payload: JSON.stringify({ location: scan.location ?? "", ...scanCoords, flags }),
   });
+
+  const journeyBlocks = blocks.concat(verifyBlock);
 
   const verdict = flags.includes("bad_signature") || flags.includes("chain_broken")
     ? "COUNTERFEIT"
@@ -100,12 +108,11 @@ export async function verifyProduct(
       batchCode: product.batch.code,
       state: product.state,
     },
-    journey: blocks.map((b) => ({ action: b.action, signer: b.signer, payload: safeParse(b.payload), timestamp: b.timestamp })),
+    journey: journeyBlocks.map((b) => ({ action: b.action, signer: b.signer, payload: safeParse(b.payload), timestamp: b.timestamp })),
   };
 }
-
-async function createAlert(productId: string | null, type: string, message: string) {
-  await db.alert.create({ data: { productId, type, message } });
+async function createAlert(productId: string | null, type: string, message: string, location?: string | null) {
+  await db.alert.create({ data: { productId, type, message, location: location ?? null } });
 }
 
 function safeParse(s: string): Record<string, unknown> {

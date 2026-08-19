@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { auth, requireRole, type AuthedRequest } from "../middleware/auth.js";
-import { createBatch, listBatches, getBatch } from "../services/batches.js";
+import { createBatch, listBatches, getBatch, recallBatch } from "../services/batches.js";
 
 const r = Router();
 
@@ -21,6 +21,12 @@ r.get("/", requireRole("manufacturer"), async (req: AuthedRequest, res, next) =>
 r.get("/:id", requireRole("manufacturer"), async (req: AuthedRequest, res, next) => {
   try {
     res.json(await getBatch(req.params.id));
+  } catch (e) { next(e); }
+});
+
+r.post("/:id/recall", requireRole("manufacturer"), async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await recallBatch(req.user!.id, req.params.id));
   } catch (e) { next(e); }
 });
 

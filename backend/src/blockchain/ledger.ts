@@ -1,7 +1,7 @@
 import { db } from "../config.js";
 import { GENESIS_HASH, hashBlock, productChainValid, type Block, type BlockInput } from "./ledger-core.js";
 
-export const ACTIONS = { MINT: "MINT", RECEIVE: "RECEIVE", VERIFY: "VERIFY", SELL: "SELL", BUY: "BUY" } as const;
+export const ACTIONS = { MINT: "MINT", RECEIVE: "RECEIVE", VERIFY: "VERIFY", SELL: "SELL", BUY: "BUY", RECALL: "RECALL" } as const;
 
 /** The single most recent block across all products. */
 async function lastGlobalBlock(): Promise<Block | null> {
@@ -72,4 +72,13 @@ export async function productBlocks(productId: string): Promise<Block[]> {
 
 export async function productChainIsValid(productId: string) {
   return productChainValid(await productBlocks(productId));
+}
+
+/** The N most recent ledger blocks, oldest-first (for the live ticker). */
+export async function recentBlocks(limit = 12): Promise<Block[]> {
+  const rows = await db.custodyRecord.findMany({
+    orderBy: { index: "desc" },
+    take: limit,
+  });
+  return rows.reverse().map(toBlock);
 }

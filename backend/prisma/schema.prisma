@@ -26,6 +26,8 @@ model Batch {
   manufacturerId String
   manufacturer User      @relation(fields: [manufacturerId], references: [id])
   quantity    Int
+  recalled    Boolean   @default(false)
+  recalledAt  DateTime?
   createdAt   DateTime  @default(now())
   products    Product[]
 }
@@ -83,5 +85,6 @@ model Alert {
   product   Product? @relation(fields: [productId], references: [id])
   type      String
   message   String
+  location  String?
   createdAt DateTime @default(now())
 }
