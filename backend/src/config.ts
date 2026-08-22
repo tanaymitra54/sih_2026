@@ -12,3 +12,4 @@ export const SMTP_PORT = Number(process.env.SMTP_PORT ?? 465);
 export const SMTP_USER = process.env.SMTP_USER ?? "";
 export const SMTP_PASS = process.env.SMTP_PASS ?? "";
 export const RECALL_MOCK_EMAIL = process.env.RECALL_MOCK_EMAIL ?? "tanay.mitra2024@vitstudent.ac.in";
+export const ALERT_EMAIL = process.env.ALERT_EMAIL ?? RECALL_MOCK_EMAIL;
