@@ -15,7 +15,7 @@ export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, JWT_SECRET) as JwtPayload;
 }
 
-const ROLES = ["manufacturer", "distributor", "pharmacist", "consumer"] as const;
+const ROLES = ["manufacturer", "distributor", "pharmacist", "consumer", "admin"] as const;
 
 export async function register(data: { name: string; email: string; password: string; role: string; location?: string }) {
   if (!ROLES.includes(data.role as (typeof ROLES)[number])) {

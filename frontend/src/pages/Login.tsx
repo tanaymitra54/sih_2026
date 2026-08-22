@@ -11,6 +11,7 @@ const DEMO_USERS: Record<string, { email: string; labelKey: string }> = {
   dist: { email: "dist@medguard.in", labelKey: "login.role.distributor" },
   pharma: { email: "pharma@medguard.in", labelKey: "login.role.pharmacist" },
   consumer: { email: "consumer@medguard.in", labelKey: "login.role.consumer" },
+  admin: { email: "admin@medguard.in", labelKey: "login.role.admin" },
 };
 
 export function Login() {

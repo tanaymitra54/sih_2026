@@ -12,16 +12,35 @@ Body: `{ name, email, password, role, location? }` → `{ token, user }`
 Body: `{ email, password }` → `{ token, user }`
 `user = { id, name, email, role, location }`
 
-## Batches  (auth: `manufacturer`)
+## Batches
 
-### POST /batches  — mint a batch
-Body: `{ name, quantity (1–500), route }` → batch with `products[]`, each
-`{ id, serial, hmac, state, qr }` where `qr = MEDG:<serial>:<hmac>:<batchCode>`.
+### POST /batches  (auth: `manufacturer`) — submit a mint request
+Body: `{ name, quantity (1–500), route }`
+Creates a batch with `status = PENDING`. **No products, QRs or ledger blocks
+exist yet** — they are only generated when an admin approves.
 
-### GET /batches  — list my batches
-→ `[{ id, code, name, route, quantity, products: [{... , qr}] }]`
+### GET /batches  (auth: `manufacturer`) — list my batches
+→ `[{ id, code, name, route, quantity, status, products: [{..., qr}] }]`
+`products` is empty until the batch is approved and minted.
 
-### GET /batches/:id  — one batch with signed QRs
+### GET /batches/:id  (auth: `manufacturer`, owner only) — one batch with signed QRs
+
+### GET /batches/pending  (auth: `admin`) — mint requests awaiting approval
+→ `[{ id, code, name, quantity, route, createdAt, manufacturer: { name } }]`
+
+### GET /batches/all  (auth: `admin`) — every request + outcome (recent first)
+
+### POST /batches/:id/approve  (auth: `admin`)
+Flips `PENDING → ACTIVE`, then mints: per pack a serial is generated,
+Ed25519-signed, a Product row and a MINT ledger block are created. The MINT
+payload embeds `approvedBy: <admin id>` for tamper-evident attribution.
+→ `{ ..., status: "ACTIVE", productsMinted: n }`
+Second approve → 400 `batch_already_processed`.
+
+### POST /batches/:id/reject  (auth: `admin`) — terminal; nothing is ever minted
+
+### POST /batches/:id/recall  (auth: `manufacturer`, ACTIVE batches only)
+Recalling a PENDING/REJECTED batch → 400 `batch_not_approved`.
 
 ## Custody  (auth)
 
@@ -46,7 +65,7 @@ Body: `{ qr, scan?: { location?, lat?, lng? } }`
 
 - `verdict`: `GENUINE | SUSPICIOUS | COUNTERFEIT`
 - `flags`: `unparseable_qr | not_minted | bad_signature | chain_broken |
-  scanned_after_sold | route_mismatch | scan_flood`
+  batch_not_approved | scanned_after_sold | route_mismatch | scan_flood`
 - `product`: `{ serial, name, batchCode, state }` (null if never minted)
 - `journey`: ordered custody blocks `{ action, signer, payload, timestamp }`
   (timestamps in **seconds** — multiply by 1000 client-side).
