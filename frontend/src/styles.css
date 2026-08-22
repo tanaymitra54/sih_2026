@@ -964,6 +964,10 @@ tbody tr:hover { background: var(--bg-soft); }
   }
 }
 
+@media (max-width: 767px) {
+  .side-rail { display: none; }
+}
+
 /* ============================== Login ============================== */
 
 .login-page {
