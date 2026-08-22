@@ -7,7 +7,6 @@ import type { Product, VerifyResult } from "../types";
 import { ScanInput } from "../components/ScanInput";
 import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
-import { Confetti } from "../components/Confetti";
 import { JourneyMap } from "../components/JourneyMap";
 import { CountStat } from "../components/CountStat";
 import { verifyUrl } from "../utils/qrUrl";
@@ -80,8 +79,7 @@ export function Pharmacist() {
 
       {result && (
         <div className="relative">
-          {result.verdict === "GENUINE" && <Confetti />}
-          <div className={`verdict ${result.verdict} animate-in ${result.verdict === "COUNTERFEIT" ? "shake" : ""}`}>
+          <div className={`verdict ${result.verdict} animate-in`}>
             <span className="v-icon">
               {result.verdict === "GENUINE" ? <CheckIcon /> : result.verdict === "SUSPICIOUS" ? <WarnIcon /> : <CrossIcon />}
             </span>

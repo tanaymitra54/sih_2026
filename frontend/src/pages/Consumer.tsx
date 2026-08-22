@@ -7,7 +7,6 @@ import type { VerifyResult } from "../types";
 import { ScanInput } from "../components/ScanInput";
 import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
-import { Confetti } from "../components/Confetti";
 import { JourneyMap } from "../components/JourneyMap";
 import { ChatBot } from "../components/ChatBot";
 import { CartIcon, CheckIcon, CrossIcon, WarnIcon } from "../components/icons";
@@ -71,9 +70,6 @@ export function Consumer() {
     if (qr) verify(qr);
   }, [search]);
 
-  const verdictClass =
-    result?.verdict === "COUNTERFEIT" ? "shake" : "";
-
   return (
     <>
       <div className="page-header">
@@ -88,8 +84,7 @@ export function Consumer() {
 
       {result && (
         <div className="relative">
-          {result.verdict === "GENUINE" && <Confetti />}
-          <div className={`verdict ${result.verdict} animate-in ${verdictClass}`}>
+          <div className={`verdict ${result.verdict} animate-in`}>
             <span className="v-icon"><VerdictIcon verdict={result.verdict} /></span>
             <div className="v-text">
               <div className="v-label">{t(`verdict.${result.verdict}`)}</div>
