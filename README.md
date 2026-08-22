@@ -70,7 +70,7 @@ flowchart TD
     P1 -- no --> F1[COUNTERFEIT<br/>unparseable]
     P1 -- yes --> P2{Serial minted?}
     P2 -- no --> F2[COUNTERFEIT<br/>not_minted]
-    P2 -- yes --> P3{HMAC signature valid?}
+    P2 -- yes -->     P3 {Signature valid?<br/>Ed25519 or legacy HMAC}
     P3 -- no --> F3[COUNTERFEIT<br/>bad_signature]
     P3 -- yes --> P4{Custody chain intact?}
     P4 -- no --> F4[COUNTERFEIT<br/>chain_broken]

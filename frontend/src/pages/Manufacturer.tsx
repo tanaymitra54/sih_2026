@@ -12,7 +12,8 @@ import { verifyUrl } from "../utils/qrUrl";
 import { CountStat } from "../components/CountStat";
 import { SupplyFlow } from "../components/SupplyFlow";
 import { LedgerTicker } from "../components/LedgerTicker";
-import { BoxIcon, ChevronIcon, DownloadIcon, PlusIcon, ShieldIcon } from "../components/icons";
+import { JourneyMap } from "../components/JourneyMap";
+import { BoxIcon, ChevronIcon, CrossIcon, DownloadIcon, PlusIcon, ShieldIcon } from "../components/icons";
 
 const mintSchema = z.object({
   name: z.string().min(1, "Medicine name is required"),
@@ -24,9 +25,35 @@ type MintForm = z.output<typeof mintSchema>;
 // validation is unchanged, so the cast is safe.
 const mintResolver = zodResolver(mintSchema) as unknown as Resolver<MintForm>;
 
+interface TrailBlock {
+  action: string;
+  who: string;
+  location: string | null;
+  lat: number | null;
+  lng: number | null;
+  flags: string[];
+  timestamp: number;
+}
+interface Trail {
+  product: {
+    serial: string; name: string; batchCode: string; route: string;
+    state: string; recalled: boolean; mintedAt: number | null;
+  };
+  chainValid: boolean;
+  journey: TrailBlock[];
+}
+
+function whereOf(b: TrailBlock): string {
+  if (b.location && b.lat != null && b.lng != null) return `${b.location} (${b.lat.toFixed(4)}, ${b.lng.toFixed(4)})`;
+  if (b.location) return b.location;
+  if (b.lat != null && b.lng != null) return `${b.lat.toFixed(4)}, ${b.lng.toFixed(4)}`;
+  return "—";
+}
+
 export function Manufacturer() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [selected, setSelected] = useState<Batch | null>(null);
+  const [trail, setTrail] = useState<Trail | null>(null);
   const { t } = useI18n();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<MintForm>({
     resolver: mintResolver,
@@ -59,10 +86,21 @@ export function Manufacturer() {
     if (!window.confirm(t("mfr.recallConfirm"))) return;
     try {
       const { data } = await api.post(`/batches/${batch.id}/recall`);
-      toast.success(`${t("mfr.recallSent")} (${data.notified.length} notified)`);
+      const email = data.notified?.[0];
+      toast.success(`${t("mfr.recallSent")} Email ${email?.status ?? "queued"} to ${email?.to ?? "mock recipient"}.`);
       await load();
     } catch (e: any) {
       toast.error(e.response?.data?.error ?? "Recall failed");
+    }
+  }
+
+  async function openTrail(serial: string) {
+    setTrail(null);
+    try {
+      const { data } = await api.get(`/ledger/product/${serial}`);
+      setTrail(data);
+    } catch (e: any) {
+      toast.error(e.response?.data?.error ?? "Could not load pack trail");
     }
   }
 
@@ -126,7 +164,7 @@ export function Manufacturer() {
           <p className="muted">Scan with any phone camera / Google Lens — it opens the public Verify page. Pasting the text also works.</p>
           <div className="grid">
             {selected.products.map((p) => (
-              <div key={p.id} className="qr-cell">
+              <div key={p.id} className="qr-cell clickable" onClick={() => openTrail(p.serial)} title="View custody trail">
                 <div id={`qr-${p.id}`}>
                   <QRCodeCanvas value={verifyUrl(p.qr)} size={160} includeMargin />
                 </div>
@@ -134,7 +172,8 @@ export function Manufacturer() {
                 <span className="serial">{p.serial}</span>
                 <button
                   className="btn btn-ghost small"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     const c = document.getElementById(`qr-${p.id}`)?.querySelector("canvas") as HTMLCanvasElement | null;
                     const a = document.createElement("a");
                     a.href = c ? c.toDataURL("image/png") : "";
@@ -147,6 +186,51 @@ export function Manufacturer() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {trail && (
+        <div className="card animate-in">
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
+            <h2 style={{ margin: 0, flex: 1, minWidth: 0 }}>
+              {trail.product.name} · <span className="serial" style={{ fontSize: 13 }}>{trail.product.serial}</span>
+            </h2>
+            <StatusBadge state={trail.product.state} />
+            {trail.chainValid
+              ? <span className="badge GENUINE">chain intact</span>
+              : <span className="badge COUNTERFEIT">chain broken</span>}
+            <button className="icon-btn" onClick={() => setTrail(null)} aria-label="Close pack trail"><CrossIcon /></button>
+          </div>
+
+          <JourneyMap
+            journey={trail.journey.map((b) => ({
+              action: b.action,
+              signer: b.who,
+              payload: { location: b.location ?? "", lat: b.lat ?? undefined, lng: b.lng ?? undefined },
+              timestamp: b.timestamp,
+            }))}
+          />
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Event</th><th>By</th><th>Where</th><th>When</th></tr>
+              </thead>
+              <tbody>
+                {trail.journey.map((b, i) => (
+                  <tr key={i}>
+                    <td data-label="Event"><span className={`badge badge-mini ${b.flags.length ? "danger" : ""}`}>{b.action}</span></td>
+                    <td data-label="By">{b.who}</td>
+                    <td data-label="Where">{whereOf(b)}</td>
+                    <td data-label="When">{new Date(b.timestamp * 1000).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="caption" style={{ marginTop: "0.6rem" }}>
+            Route: {trail.product.route} · Click any QR above to inspect its pack trail.
+          </p>
         </div>
       )}
     </>

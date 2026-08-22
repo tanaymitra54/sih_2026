@@ -20,3 +20,31 @@ export function resolveCoords(name?: string | null): Coords | null {
   const key = name.toLowerCase().trim().replace(/\s+/g, "");
   return CITY_COORDS[key] ?? null;
 }
+
+function distKm(a: Coords, b: Coords): number {
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(s));
+}
+
+/**
+ * Nearest known metro for raw GPS coords — coarse regional attribution used to
+ * feed the fraud heatmap from consumer scans (which carry coords, not names).
+ * ponytail: attributes to nearest known city at any distance; swap for a real
+ * reverse geocoder if precision ever matters.
+ */
+export function nearestCity(coords: Coords): string | null {
+  let bestName: string | null = null;
+  let bestD = Infinity;
+  for (const [name, c] of Object.entries(CITY_COORDS)) {
+    const d = distKm(coords, c);
+    if (d < bestD) {
+      bestD = d;
+      bestName = name;
+    }
+  }
+  return bestName ? bestName[0].toUpperCase() + bestName.slice(1) : null;
+}

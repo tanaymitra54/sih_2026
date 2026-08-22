@@ -10,11 +10,14 @@ import { Timeline } from "../components/Timeline";
 import { JourneyMap } from "../components/JourneyMap";
 import { CountStat } from "../components/CountStat";
 import { verifyUrl } from "../utils/qrUrl";
+import { getPosition } from "../utils/getPosition";
+import type { Coords } from "../utils/getPosition";
 import { CartIcon, CheckIcon, CrossIcon, StoreIcon, TruckIcon, WarnIcon } from "../components/icons";
 
 export function Pharmacist() {
   const [products, setProducts] = useState<Product[]>([]);
   const [result, setResult] = useState<VerifyResult | null>(null);
+  const [scanPos, setScanPos] = useState<Coords | null>(null);
   const { t } = useI18n();
 
   async function load() {
@@ -30,6 +33,9 @@ export function Pharmacist() {
   async function verify(qr: string) {
     setResult(null);
     try {
+      // Ask the phone for its location first — feeds geo flags, alerts and the heatmap.
+      const pos = await getPosition();
+      setScanPos(pos);
       // One scan advances the chain: receive (DISTRIBUTED → AT_PHARMACY) then verify.
       try {
         const r = await api.post("/custody/receive", { qr });
@@ -39,7 +45,7 @@ export function Pharmacist() {
         const err = e.response?.data?.error ?? "";
         if (!err.startsWith("cannot_receive_from_state_")) toast.error(err);
       }
-      const { data } = await api.post("/verify", { qr, scan: {} });
+      const { data } = await api.post("/verify", { qr, scan: pos ? { lat: pos.lat, lng: pos.lng } : {} });
       setResult(data);
     } catch {
       toast.error("Verify failed");
@@ -86,6 +92,11 @@ export function Pharmacist() {
             <div className="v-text">
               <div className="v-label">{t(`verdict.${result.verdict}`)}</div>
               {result.flags.length > 0 && <div className="v-sub">Flags: {result.flags.join(", ")}</div>}
+              {scanPos && (
+                <div className="caption" style={{ marginTop: 4 }}>
+                  Scan location accepted · {scanPos.lat.toFixed(5)}, {scanPos.lng.toFixed(5)}
+                </div>
+              )}
             </div>
           </div>
         </div>

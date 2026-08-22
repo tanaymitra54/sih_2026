@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { GENESIS_HASH, hashBlock, productChainValid, missingHandoffs, type Block } from "./ledger-core.ts";
+import { GENESIS_HASH, hashBlock, productChainValid, missingHandoffs, type Block } from "./ledger-core.js";
 
 function makeBlock(
   index: number,

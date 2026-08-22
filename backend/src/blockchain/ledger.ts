@@ -74,11 +74,29 @@ export async function productChainIsValid(productId: string) {
   return productChainValid(await productBlocks(productId));
 }
 
-/** The N most recent ledger blocks, oldest-first (for the live ticker). */
-export async function recentBlocks(limit = 12): Promise<Block[]> {
+/** The N most recent ledger blocks, oldest-first, enriched for the live ticker. */
+export async function recentBlocks(limit = 12) {
   const rows = await db.custodyRecord.findMany({
     orderBy: { index: "desc" },
     take: limit,
+    include: { product: { include: { batch: true } } },
   });
-  return rows.reverse().map(toBlock);
+  const users = await db.user.findMany({ where: { id: { in: rows.map((r) => r.signer) } } });
+  const byId = new Map(users.map((u) => [u.id, u]));
+  return rows.reverse().map((row) => {
+    const u = byId.get(row.signer);
+    let location = "";
+    try {
+      location = String(JSON.parse(row.payload).location ?? "");
+    } catch { /* payload without a location */ }
+    return {
+      ...toBlock(row),
+      serial: row.product.serial,
+      medicine: row.product.batch.name,
+      batchCode: row.product.batch.code,
+      recalled: row.product.batch.recalled,
+      signerName: u ? `${u.name} · ${u.role}` : row.signer,
+      location,
+    };
+  });
 }

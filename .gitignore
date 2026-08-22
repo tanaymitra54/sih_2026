@@ -4,5 +4,6 @@ dist/
 *.tsbuildinfo
 .env
 .DS_Store
+backend/keys/
 backend/prisma/dev.db
 backend/prisma/dev.db-journal

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../store";
 import { useI18n } from "../i18n";
-import { ArrowRightIcon, ShieldIcon } from "../components/icons";
+import { BrandLockup } from "../components/BrandLockup";
+import { ArrowRightIcon, CheckIcon, ScanIcon } from "../components/icons";
 
 const DEMO_USERS: Record<string, { email: string; labelKey: string }> = {
   mfr: { email: "mfr@medguard.in", labelKey: "login.role.manufacturer" },
@@ -39,10 +40,29 @@ export function Login() {
 
   return (
     <div className="login-wrap">
+      <div className="login-story">
+        <BrandLockup />
+        <p className="eyebrow">Trusted medicine infrastructure</p>
+        <h2>Every pack has a story.<br /><em>Make it verifiable.</em></h2>
+        <p className="story-copy">A quiet layer of protection for the people who make, move, dispense, and depend on medicine.</p>
+        <div className="story-list">
+          <span><CheckIcon size={15} /> Signed at source</span>
+          <span><ScanIcon size={15} /> Traced in motion</span>
+          <span><CheckIcon size={15} /> Verified at the point of care</span>
+        </div>
+        <div className="reference-card" aria-label="Live verification reference">
+          <img src="/reference-card.png" alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+          <div className="reference-card-fallback">
+            <div><span>▥ 24K</span><span>◷ Today, 8:00 PM</span><span>● Live network</span></div>
+            <strong>Every pack carries a verifiable chain.</strong>
+            <div className="reference-actions"><span>Minted · 1¢</span><span>Verified · 99¢</span></div>
+          </div>
+        </div>
+        <div className="story-orbit orbit-one" /><div className="story-orbit orbit-two" />
+      </div>
       <div className="login-card animate-in">
         <div className="login-brand">
-          <span className="brand-mark"><ShieldIcon size={34} /></span>
-          <h1>{t("brand")}</h1>
+          <BrandLockup />
           <p className="muted">{t("login.subtitle")}</p>
         </div>
 

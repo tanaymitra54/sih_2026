@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 250" role="img" aria-labelledby="title">
+  <title>ORVYN logo</title>
+  <rect width="250" height="250" fill="#fff"/>
+  <g transform="translate(8 8)">
+    <path fill="#172230" d="M103 2c21 0 40 8 55 23l39 39-38 38-39-39c-9-9-24-9-33 0l-56 56c-12 12-12 32 0 44l20 20c12 12 32 12 44 0l56-56c9-9 24-9 33 0l38 38-57 57c-33 33-86 33-119 0l-20-20c-33-33-33-86 0-119l56-56C59 11 80 2 103 2Z"/>
+    <path fill="#172230" d="m89 166 38-38c9-9 24-9 33 0l39 39-57 57c-31 31-80 33-114 6l-20-20c-4-4-7-8-10-12 32 15 55 7 73-11l18-18Z"/>
+    <path fill="#0be0ce" d="m144 66 38 38c9 9 9 24 0 33l-39 39-38-38c-9-9-9-24 0-33l39-39Z"/>
+  </g>
+</svg>

@@ -10,16 +10,9 @@ import { Pharmacist } from "./pages/Pharmacist";
 import { Consumer } from "./pages/Consumer";
 import { Alerts } from "./pages/Alerts";
 import { OfflineBanner } from "./components/OfflineBanner";
-import { BellIcon, HomeIcon, LogoutIcon, MoonIcon, ScanIcon, ShieldIcon, SunIcon } from "./components/icons";
+import { BrandLockup } from "./components/BrandLockup";
+import { BellIcon, HomeIcon, LogoutIcon, MoonIcon, ScanIcon, SunIcon } from "./components/icons";
 import type { ReactNode } from "react";
-
-function BrandMark() {
-  return (
-    <span className="brand-mark">
-      <ShieldIcon size={16} />
-    </span>
-  );
-}
 
 function ThemeToggle({ theme, isAuto, toggle }: { theme: string; isAuto: boolean; toggle: () => void }) {
   return (
@@ -69,7 +62,7 @@ function Nav() {
       {!user ? (
         <header className="nav nav--public">
           <div className="nav-inner">
-            <span className="brand"><BrandMark /> {t("brand")}</span>
+            <BrandLockup />
             <div className="nav-right">
               <LanguageToggle />
               <ThemeToggle theme={theme} isAuto={isAuto} toggle={toggle} />
@@ -78,14 +71,22 @@ function Nav() {
         </header>
       ) : (
         <>
+          <aside className="side-rail">
+            <div className="rail-brand"><BrandLockup /></div>
+            <div className="rail-kicker">Operations console</div>
+            <nav className="rail-links" aria-label="Primary navigation">
+              <NavLink to={`/${user.role}`}><HomeIcon /> <span>{t("nav.dashboard")}</span></NavLink>
+              <NavLink to="/consumer/verify"><ScanIcon /> <span>{t("nav.verify")}</span></NavLink>
+              <NavLink to="/alerts"><BellIcon /> <span>{t("nav.alerts")}</span></NavLink>
+            </nav>
+            <div className="rail-footer">
+              <span className="status-pip" /> Systems operational
+            </div>
+          </aside>
           <header className="nav">
             <div className="nav-inner">
-              <span className="brand"><BrandMark /> {t("brand")}</span>
-              <nav className="nav-links">
-                <NavLink to={`/${user.role}`}>{t("nav.dashboard")}</NavLink>
-                <NavLink to="/consumer/verify">{t("nav.verify")}</NavLink>
-                <NavLink to="/alerts">{t("nav.alerts")}</NavLink>
-              </nav>
+              <BrandLockup compact />
+              <span className="top-context">{user.role} workspace <span className="status-pip" /></span>
               <div className="nav-right">
                 <span className="user-chip"><strong>{user.name}</strong> · {user.role}</span>
                 <LanguageToggle />
@@ -135,7 +136,7 @@ export default function App() {
       <OfflineBanner />
       <Toaster position="top-right" richColors closeButton />
       <Nav />
-      <main className="page">
+       <main className={`page ${user ? "page--app" : "page--public"}`}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Navigate to={user ? `/${user.role}` : "/login"} replace />} />

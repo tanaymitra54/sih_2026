@@ -3,6 +3,7 @@ import { appendBlock, productBlocks, productChainIsValid } from "../blockchain/l
 import { ACTIONS } from "../blockchain/ledger.js";
 import { missingHandoffs } from "../blockchain/ledger-core.js";
 import { verifySignature, parseQr } from "../utils/qr.js";
+import { nearestCity } from "../utils/geo.js";
 
 export interface VerifyResult {
   verdict: "GENUINE" | "SUSPICIOUS" | "COUNTERFEIT";
@@ -26,6 +27,12 @@ export async function verifyProduct(
   qrText: string,
   scan: { location?: string; lat?: number; lng?: number },
 ): Promise<VerifyResult> {
+  // Consumer scans carry GPS coords; pharmacist scans may carry a text location.
+  // Resolve coords → nearest metro so every alert feeds the heatmap.
+  const alertLoc =
+    scan.location ??
+    (scan.lat != null && scan.lng != null ? nearestCity({ lat: scan.lat, lng: scan.lng }) : null);
+
   const qr = parseQr(qrText);
   if (!qr) return { verdict: "COUNTERFEIT", flags: ["unparseable_qr"], product: null, journey: [] };
 
@@ -35,7 +42,7 @@ export async function verifyProduct(
   });
 
   if (!product) {
-    await createAlert(null, "unminted_serial", `Serial ${qr.serial} was never minted.`, scan.location);
+    await createAlert(null, "unminted_serial", `Serial ${qr.serial} was never minted.`, alertLoc);
     return { verdict: "COUNTERFEIT", flags: ["not_minted"], product: null, journey: [] };
   }
 
@@ -43,12 +50,12 @@ export async function verifyProduct(
 
   if (!verifySignature(qr.serial, qr.batchCode, qr.hmac)) {
     flags.push("bad_signature");
-    await createAlert(product.id, "bad_signature", `${product.serial}: signature does not verify — copied/forged QR.`, scan.location);
+    await createAlert(product.id, "bad_signature", `${product.serial}: signature does not verify — copied/forged QR.`, alertLoc);
   }
 
   if (product.batch.recalled) {
     flags.push("batch_recalled");
-    await createAlert(product.id, "batch_recalled", `${product.serial} belongs to recalled batch ${product.batch.code}.`, scan.location);
+    await createAlert(product.id, "batch_recalled", `${product.serial} belongs to recalled batch ${product.batch.code}.`, alertLoc);
   }
 
   const blocks = await productBlocks(product.id);
@@ -61,23 +68,23 @@ export async function verifyProduct(
   const missing = missingHandoffs(product.state, blocks.map((b) => b.action));
   if (missing.length) {
     flags.push("missing_handoff");
-    await createAlert(product.id, "missing_handoff", `${product.serial}: chain missing ${missing.join(", ")} for state ${product.state}.`, scan.location);
+    await createAlert(product.id, "missing_handoff", `${product.serial}: chain missing ${missing.join(", ")} for state ${product.state}.`, alertLoc);
   }
 
   if (product.state === "SOLD") {
     flags.push("scanned_after_sold");
-    await createAlert(product.id, "sold_then_scanned", `${product.serial} scanned after being sold — possible clone/reuse.`, scan.location);
+    await createAlert(product.id, "sold_then_scanned", `${product.serial} scanned after being sold — possible clone/reuse.`, alertLoc);
   }
 
   if (scan.location && !locationsMatch(product.batch.route, scan.location)) {
     flags.push("route_mismatch");
-    await createAlert(product.id, "route_mismatch", `${product.serial} scanned at ${scan.location}, outside declared route ${product.batch.route}.`, scan.location);
+    await createAlert(product.id, "route_mismatch", `${product.serial} scanned at ${scan.location}, outside declared route ${product.batch.route}.`, alertLoc);
   }
 
   const scanCount = await db.scanEvent.count({ where: { productId: product.id } });
   if (scanCount >= 5) {
     flags.push("scan_flood");
-    await createAlert(product.id, "scan_flood", `${product.serial} scanned ${scanCount + 1} times — many copies in circulation.`, scan.location);
+    await createAlert(product.id, "scan_flood", `${product.serial} scanned ${scanCount + 1} times — many copies in circulation.`, alertLoc);
   }
 
   await db.scanEvent.create({
@@ -88,7 +95,7 @@ export async function verifyProduct(
     productId: product.id,
     action: ACTIONS.VERIFY,
     signer: "public",
-    payload: JSON.stringify({ location: scan.location ?? "", ...scanCoords, flags }),
+    payload: JSON.stringify({ location: alertLoc ?? "", ...scanCoords, flags }),
   });
 
   const journeyBlocks = blocks.concat(verifyBlock);

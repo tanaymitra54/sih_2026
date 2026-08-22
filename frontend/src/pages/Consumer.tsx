@@ -8,18 +8,20 @@ import { ScanInput } from "../components/ScanInput";
 import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
 import { JourneyMap } from "../components/JourneyMap";
+import { getPosition } from "../utils/getPosition";
 import { ChatBot } from "../components/ChatBot";
 import { CartIcon, CheckIcon, CrossIcon, WarnIcon } from "../components/icons";
 
-function getPosition(): Promise<{ lat: number; lng: number } | null> {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null),
-      { timeout: 4000, maximumAge: 30000 },
-    );
-  });
+/** Exact place name for the accepted order — OSM Nominatim, no key needed. */
+async function reverseGeocode(pos: { lat: number; lng: number }): Promise<string> {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${pos.lat}&lon=${pos.lng}`);
+    if (!r.ok) return "";
+    const j = await r.json();
+    return typeof j.display_name === "string" ? j.display_name : "";
+  } catch {
+    return "";
+  }
 }
 
 function VerdictIcon({ verdict }: { verdict: string }) {
@@ -33,15 +35,19 @@ export function Consumer() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [bought, setBought] = useState(false);
+  const [scanPos, setScanPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [scanAddr, setScanAddr] = useState("");
   const { search } = useLocation();
   const { t } = useI18n();
 
   async function verify(qr: string) {
-    setError(""); setResult(null); setBought(false); setLoading(true);
+    setError(""); setResult(null); setBought(false); setScanPos(null); setScanAddr(""); setLoading(true);
     try {
       const pos = await getPosition();
       const { data } = await api.post("/verify", { qr, scan: pos ? { lat: pos.lat, lng: pos.lng } : {} });
       setResult(data);
+      setScanPos(pos);
+      if (pos) reverseGeocode(pos).then(setScanAddr);
       if (data.product?.state === "SOLD") setBought(true);
     } catch {
       setError("Verify failed — did you paste the full MEDG:... text?");
@@ -89,6 +95,13 @@ export function Consumer() {
             <div className="v-text">
               <div className="v-label">{t(`verdict.${result.verdict}`)}</div>
               <div className="v-sub">{t(`verdict.${result.verdict}.sub`)}</div>
+              {scanPos && (
+                <div className="caption" style={{ marginTop: 4 }}>
+                  {scanAddr
+                    ? `Accepted at ${scanAddr}`
+                    : `Location accepted · ${scanPos.lat.toFixed(6)}, ${scanPos.lng.toFixed(6)}`}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -141,7 +154,7 @@ export function Consumer() {
         <div className="group">
           <div className="group-title">{t("consumer.journey")}</div>
           <div style={{ padding: "0.5rem 1.1rem 1rem" }}>
-            <JourneyMap journey={result.journey} />
+            <JourneyMap journey={result.journey} scanLabel={scanAddr || undefined} />
             <div style={{ marginTop: 12 }}>
               <Timeline journey={result.journey} />
             </div>

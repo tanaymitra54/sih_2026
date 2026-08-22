@@ -30,7 +30,7 @@ function pointsOf(journey: JourneyItem[]): Point[] {
   return out;
 }
 
-export function JourneyMap({ journey }: { journey: JourneyItem[] }) {
+export function JourneyMap({ journey, scanLabel }: { journey: JourneyItem[]; scanLabel?: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const points = pointsOf(journey);
   const pointsKey = JSON.stringify(points.map((p) => [p.lat, p.lng]));
@@ -40,28 +40,31 @@ export function JourneyMap({ journey }: { journey: JourneyItem[] }) {
     if (!el || points.length === 0) return;
 
     const map = L.map(el, { scrollWheelZoom: false });
-    L.tileLayer("https://tiles.openfreemap.org/styles/liberty/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenFreeMap contributors",
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
       maxZoom: 19,
     }).addTo(map);
 
     const positions: [number, number][] = points.map((p) => [p.lat, p.lng]);
 
     if (positions.length > 1) {
-      L.polyline(positions, { color: "#e67e22", weight: 3 }).addTo(map);
+      L.polyline(positions, { color: "#8a9089", weight: 2, dashArray: "4 4" }).addTo(map);
     }
 
     points.forEach((p) => {
+      const isVerify = p.action === "VERIFY";
       L.circleMarker([p.lat, p.lng], {
-        radius: 8,
-        color: "#c0392b",
-        fillColor: "#e67e22",
-        fillOpacity: 0.9,
+        radius: 7,
+        color: isVerify ? "#ad3b32" : "#0e6b50",
+        fillColor: isVerify ? "#ad3b32" : "#0e6b50",
+        fillOpacity: 0.85,
         weight: 2,
       })
         .addTo(map)
         .bindPopup(
-          `<strong>${p.action}</strong>${p.location ? ` · ${p.location}` : ""}<br/>by ${p.who}` +
+          (isVerify ? "<strong>Verified here</strong>" : `<strong>${p.action}</strong>`) +
+            ` · ${scanLabel && isVerify ? scanLabel : p.location ?? "—"}` +
+            (!isVerify ? `<br/>by ${p.who}` : "") +
             (p.time ? `<br/>${p.time}` : ""),
         );
     });

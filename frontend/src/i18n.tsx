@@ -23,7 +23,7 @@ export type Lang = (typeof LANGS)[number]["code"];
 type Dict = Record<string, string>;
 
 const en: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "Dashboard",
   "nav.verify": "Verify",
   "nav.alerts": "Alerts",
@@ -91,7 +91,7 @@ const en: Dict = {
   "alerts.subtitle": "Anomalies raised automatically: copied QRs, broken chains, scans outside the declared route, recalls.",
   "alerts.none": "No alerts. All clean.",
   "alerts.hotspots": "Fraud hotspots",
-  "chat.title": "MedGuard Assistant",
+  "chat.title": "ORVYN Assistant",
   "chat.subtitle": "Ask about your medicine",
   "chat.hint": "Scan a pack, then ask me anything — safety, side effects, or how to verify your medicine.",
   "chat.placeholder": "Ask about this medicine…",
@@ -106,7 +106,7 @@ const en: Dict = {
 };
 
 const hi: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "डैशबोर्ड",
   "nav.verify": "जाँचें",
   "nav.alerts": "सूचनाएँ",
@@ -174,7 +174,7 @@ const hi: Dict = {
   "alerts.subtitle": "स्वचालित सूचनाएँ: नकली QR, टूटी श्रृंखला, घोषित मार्ग से बाहर स्कैन, रिकॉल।",
   "alerts.none": "कोई सूचना नहीं। सब साफ है।",
   "alerts.hotspots": "धोखाधड़ी हॉटस्पॉट",
-  "chat.title": "MedGuard सहायक",
+  "chat.title": "ORVYN सहायक",
   "chat.subtitle": "अपनी दवा के बारे में पूछें",
   "chat.hint": "पैक स्कैन करें, फिर कुछ भी पूछें — सुरक्षा, दुष्प्रभाव या दवा कैसे जाँचें।",
   "chat.placeholder": "इस दवा के बारे में पूछें…",
@@ -189,7 +189,7 @@ const hi: Dict = {
 };
 
 const ta: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "டாஷ்போர்டு",
   "nav.verify": "சரிபார்",
   "nav.alerts": "எச்சரிக்கைகள்",
@@ -257,7 +257,7 @@ const ta: Dict = {
   "alerts.subtitle": "தானியங்கி எச்சரிக்கைகள்: போலி QR, உடைந்த சங்கிலி, பாதைக்கு வெளியே ஸ்கேன், திரும்பப்பெறல்கள்.",
   "alerts.none": "எச்சரிக்கைகள் இல்லை. எல்லாம் சரி.",
   "alerts.hotspots": "மோசடி புள்ளிகள்",
-  "chat.title": "MedGuard உதவியாளர்",
+  "chat.title": "ORVYN உதவியாளர்",
   "chat.subtitle": "உங்கள் மருந்தைப் பற்றி கேளுங்கள்",
   "chat.hint": "பேக்கை ஸ்கேன் செய்யுங்கள், பிறகு ஏதும் கேளுங்கள் — பாதுகாப்பு, பக்க விளைவுகள் அல்லது மருந்தை எப்படி சரிபார்ப்பது.",
   "chat.placeholder": "இந்த மருந்தைப் பற்றி கேளுங்கள்…",
@@ -272,7 +272,7 @@ const ta: Dict = {
 };
 
 const te: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "డాష్బోర్డ్",
   "nav.verify": "ధృవీకరించండి",
   "nav.alerts": "హెచ్చరికలు",
@@ -355,7 +355,7 @@ const te: Dict = {
 };
 
 const bn: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "ড্যাশবোর্ড",
   "nav.verify": "যাচাই করুন",
   "nav.alerts": "সতর্কতা",
@@ -438,7 +438,7 @@ const bn: Dict = {
 };
 
 const mr: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "डॅशबोर्ड",
   "nav.verify": "तपासा",
   "nav.alerts": "सूचना",
@@ -521,7 +521,7 @@ const mr: Dict = {
 };
 
 const gu: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "ડેશબોર્ડ",
   "nav.verify": "ચકાસો",
   "nav.alerts": "ચેતવણીઓ",
@@ -604,7 +604,7 @@ const gu: Dict = {
 };
 
 const kn: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
   "nav.verify": "ಪರಿಶೀಲಿಸಿ",
   "nav.alerts": "ಎಚ್ಚರಿಕೆಗಳು",
@@ -687,7 +687,7 @@ const kn: Dict = {
 };
 
 const ml: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "ഡാഷ്ബോർഡ്",
   "nav.verify": "പരിശോധിക്കുക",
   "nav.alerts": "അലേർട്ടുകൾ",
@@ -770,7 +770,7 @@ const ml: Dict = {
 };
 
 const pa: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "ਡੈਸ਼ਬੋਰਡ",
   "nav.verify": "ਜਾਂਚ ਕਰੋ",
   "nav.alerts": "ਚੇਤਾਵਨੀਆਂ",
@@ -853,7 +853,7 @@ const pa: Dict = {
 };
 
 const ur: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "ڈیش بورڈ",
   "nav.verify": "تصدیق کریں",
   "nav.alerts": "الرٹس",
@@ -936,7 +936,7 @@ const ur: Dict = {
 };
 
 const or: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "ଡ୍ୟାସବୋର୍ଡ",
   "nav.verify": "ଯାଞ୍ଚ କରନ୍ତୁ",
   "nav.alerts": "ସତର୍କତା",
@@ -1019,7 +1019,7 @@ const or: Dict = {
 };
 
 const as: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "ডেশ্ববৰ্ড",
   "nav.verify": "পৰীক্ষা কৰক",
   "nav.alerts": "সতৰ্কবাৰ্তা",
@@ -1102,7 +1102,7 @@ const as: Dict = {
 };
 
 const ne: Dict = {
-  brand: "MedGuard",
+  brand: "ORVYN",
   "nav.dashboard": "ड्यासबोर्ड",
   "nav.verify": "जाँच गर्नुहोस्",
   "nav.alerts": "चेतावनीहरू",

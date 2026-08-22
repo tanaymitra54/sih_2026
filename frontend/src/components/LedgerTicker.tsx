@@ -8,6 +8,12 @@ interface Block {
   action: string;
   signer: string;
   timestamp: number;
+  serial?: string;
+  medicine?: string;
+  batchCode?: string;
+  recalled?: boolean;
+  signerName?: string;
+  location?: string;
 }
 
 const ACTION_COLOR: Record<string, string> = {
@@ -48,9 +54,17 @@ export function LedgerTicker({ limit = 8 }: { limit?: number }) {
       <div className="ticker-list">
         {blocks.map((b) => (
           <div key={b.blockHash} className="ticker-row">
-            <span className={`badge badge-mini ${ACTION_COLOR[b.action] ?? ""}`}>{b.action}</span>
-            <span className="ticker-signer">{b.signer}</span>
-            <span className="ticker-time">{new Date(b.timestamp * 1000).toLocaleTimeString()}</span>
+            <div className="ticker-top">
+              <span className={`badge badge-mini ${ACTION_COLOR[b.action] ?? ""}`}>{b.action}</span>
+              <span className="ticker-medicine">
+                {b.medicine}
+                {b.recalled && <span className="badge badge-mini badge-danger">RECALLED</span>}
+              </span>
+              <span className="ticker-time">{new Date(b.timestamp * 1000).toLocaleTimeString()}</span>
+            </div>
+            <div className="ticker-sub" title={`${b.blockHash}`}>
+              #{b.index} · {b.serial} · {b.batchCode} · {b.location || b.signerName}
+            </div>
           </div>
         ))}
       </div>

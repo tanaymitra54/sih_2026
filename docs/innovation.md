@@ -44,7 +44,9 @@ by counterfeits — can check any pack with any phone. No app install; scan and 
 
 ## Upgrade roadmap (if the judges push)
 1. Real chain: swap SQLite persistence for a testnet/Hyperledger contract (interface unchanged).
-2. Asymmetric QR signing (manufacturer keypair) instead of shared HMAC secret.
+2. ~~Asymmetric QR signing~~ — **done**: new mints are Ed25519-signed by the manufacturer's
+   private key (`backend/src/utils/qr.ts`); the public key is published at
+   `GET /api/verify/public-key`; pre-upgrade HMAC packs still verify via dual-mode fallback.
 3. Photo packaging recognition + OCR batch code vs reference images.
 4. SMS/USSD verification for feature-phone users.
 5. Regulator portal with batch-level analytics and recall tools.

@@ -203,7 +203,7 @@ chain actually needs.
 | Gap | Status | Path |
 |---|---|---|
 | Mock blockchain (SQLite, not a real network) | In scope | Swap persistence for Ethereum/Hyperledger — interface unchanged |
-| HMAC (shared secret) not asymmetric keys | In scope | Upgrade to Ed25519 keypair so anyone verifies with a public key |
+| HMAC (shared secret) not asymmetric keys | **Fixed** | New mints are Ed25519-signed by the manufacturer's private key; anyone verifies via `GET /api/verify/public-key`. Pre-upgrade HMAC packs still verify (dual-mode) |
 | No physical↔digital binding (photo/OCR/tamper seal) | Out of scope | Image recognition on packaging vs. reference |
 | No regulator portal / SMS-USSD / recall tools | Out of scope | Documented upgrade paths |
 
