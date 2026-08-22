@@ -498,6 +498,7 @@ input:focus, textarea:focus, select:focus {
 .badge.COUNTERFEIT { color: var(--red); border-color: currentColor; background: var(--red-soft); }
 .badge.accent, .badge.saffron { color: var(--saffron); border-color: currentColor; background: none; }
 .badge.danger, .badge-danger { color: var(--red); border-color: currentColor; background: none; }
+.badge-warn { color: var(--amber); border-color: currentColor; background: none; }
 .badge-mini { padding: 0.05rem 0.35rem; font-size: 9.5px; }
 
 /* ============================== Verdict ============================== */

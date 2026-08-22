@@ -25,24 +25,36 @@ SIH_2026_final/
 ## Data flow
 
 ```
-  MANUFACTURER                      DISTRIBUTOR                       PHARMACIST                     CONSUMER
-  mint batch ──signed QRs──▶  scan → RECEIVE ──▶   scan → RECEIVE ──▶ verify → SELL ──▶  scan QR → full journey
-       │  (MINT block)         (state DISTRIBUTED)  (state AT_PHARMACY) (state SOLD)        + GENUINE verdict
+  MANUFACTURER                ADMIN                    DISTRIBUTOR                       PHARMACIST                     CONSUMER
+  submit mint request ──▶ approve ──▶ signed QRs ──▶ scan → RECEIVE ──▶   scan → RECEIVE ──▶ verify → SELL ──▶  scan QR → full journey
+  (batch = PENDING)       (ACTIVE)   (MINT blocks,     (state DISTRIBUTED) (state AT_PHARMACY) (state SOLD)      + GENUINE verdict
+                                     payload embeds
+                                     approvedBy)
        └──────────────►  immutable hash-chained ledger (SQLite)  ◄──────────────────────────────────┘
-                              every block: sha256(prevHash + productPrevHash + action + payload + signer + ts)
+                               every block: sha256(prevHash + productPrevHash + action + payload + signer + ts)
 ```
+
+**Admin gate:** a batch request stays `PENDING` until an admin approves it. No
+products, serials, QRs or ledger blocks exist before approval — a fraudulent
+manufacturer's request never produces anything verifiable. Rejection is terminal.
 
 ## State machine
 
 ```
-CREATED ──(distributor receive)──▶ DISTRIBUTED ──(pharmacist receive)──▶ AT_PHARMACY ──(pharmacist sell)──▶ SOLD
-   ▲                                   ▲                                     ▲
-   └─ MINT (manufacturer)              └─ RECEIVE block                      └─ SELL block
+Batch request:  PENDING ──(admin approve)──▶ ACTIVE ──(admin recall n/a; mfr recall)──▶ RECALLED
+                   └──(admin reject, terminal)──▶ REJECTED
+
+Pack:  CREATED ──(distributor receive)──▶ DISTRIBUTED ──(pharmacist receive)──▶ AT_PHARMACY ──(pharmacist sell / consumer buy)──▶ SOLD
+          ▲                                   ▲                                     ▲
+          └─ MINT block (created only         └─ RECEIVE block                      └─ SELL/BUY block
+             after admin approval;
+             payload embeds approvedBy)
 ```
 
 - A distributor can only receive `CREATED`; a pharmacist only `DISTRIBUTED`.
 - `SOLD` is only reachable from `AT_PHARMACY`. A pack that never passed through a
   legitimate node can never be sold.
+- Packs of batches whose `status ≠ ACTIVE` are refused at custody and flagged at verify.
 
 ## Verification rules (in order, first match wins)
 

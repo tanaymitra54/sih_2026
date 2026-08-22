@@ -24,6 +24,7 @@ export interface Batch {
   name: string;
   route: string;
   quantity: number;
+  status?: "PENDING" | "ACTIVE" | "REJECTED";
   recalled?: boolean;
   recalledAt?: string | null;
   createdAt: string;

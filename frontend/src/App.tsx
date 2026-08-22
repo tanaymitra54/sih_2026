@@ -8,6 +8,7 @@ import { Manufacturer } from "./pages/Manufacturer";
 import { Distributor } from "./pages/Distributor";
 import { Pharmacist } from "./pages/Pharmacist";
 import { Consumer } from "./pages/Consumer";
+import { Admin } from "./pages/Admin";
 import { Alerts } from "./pages/Alerts";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { BrandLockup } from "./components/BrandLockup";
@@ -144,6 +145,7 @@ export default function App() {
           <Route path="/distributor" element={<Guard role="distributor"><Distributor /></Guard>} />
           <Route path="/pharmacist" element={<Guard role="pharmacist"><Pharmacist /></Guard>} />
           <Route path="/consumer" element={<Guard role="consumer"><Consumer /></Guard>} />
+          <Route path="/admin" element={<Guard role="admin"><Admin /></Guard>} />
           <Route path="/consumer/verify" element={<Consumer />} />
           <Route path="/alerts" element={<Alerts />} />
           <Route path="*" element={<Navigate to={user ? `/${user.role}` : "/login"} replace />} />

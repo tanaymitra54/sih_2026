@@ -58,6 +58,12 @@ export async function verifyProduct(
     await createAlert(product.id, "batch_recalled", `${product.serial} belongs to recalled batch ${product.batch.code}.`, alertLoc);
   }
 
+  // Defense in depth: packs should only exist for admin-approved batches.
+  if (product.batch.status !== "ACTIVE") {
+    flags.push("batch_not_approved");
+    await createAlert(product.id, "batch_not_approved", `${product.serial}: batch ${product.batch.code} is ${product.batch.status}, never approved by an admin.`, alertLoc);
+  }
+
   const blocks = await productBlocks(product.id);
   const chain = blocks.length
     ? await productChainIsValid(product.id)

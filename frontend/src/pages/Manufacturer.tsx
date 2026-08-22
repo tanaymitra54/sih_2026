@@ -74,7 +74,7 @@ export function Manufacturer() {
   async function create(values: MintForm) {
     try {
       await api.post("/batches", values);
-      toast.success("Batch minted — each pack got a signed QR.");
+      toast.success(t("mfr.requestSent"));
       reset({ name: "", quantity: 5, route: "Delhi" });
       await load();
     } catch (e: any) {
@@ -147,10 +147,20 @@ export function Manufacturer() {
           <div key={b.id} className="row">
             <span className="stat-icon"><BoxIcon /></span>
             <div className="row-main clickable" onClick={() => setSelected(b)}>
-              <div className="row-title">{b.name} {b.recalled && <span className="badge badge-danger">{t("mfr.recalled")}</span>}</div>
+              <div className="row-title">
+                {b.name}{" "}
+                {b.recalled && <span className="badge badge-danger">{t("mfr.recalled")}</span>}
+                {b.status === "PENDING" && <span className="badge badge-warn">{t("mfr.pending")}</span>}
+                {b.status === "REJECTED" && <span className="badge badge-danger">{t("mfr.rejectedBadge")}</span>}
+              </div>
               <div className="row-sub">{b.code} · route {b.route} · {b.products.length} packs</div>
             </div>
-            <button className="btn btn-ghost small" onClick={() => recall(b)} disabled={b.recalled}>
+            {b.status === "PENDING" && <span className="muted" style={{ fontSize: 12 }}>{t("mfr.awaitingApproval")}</span>}
+            <button
+              className="btn btn-ghost small"
+              onClick={() => recall(b)}
+              disabled={b.recalled || b.status !== "ACTIVE"}
+            >
               {t("mfr.recall")}
             </button>
             <span className="chevron clickable" onClick={() => setSelected(b)}><ChevronIcon size={18} /></span>
@@ -158,7 +168,7 @@ export function Manufacturer() {
         ))}
       </div>
 
-      {selected && (
+      {selected && selected.products.length > 0 && (
         <div className="card animate-in">
           <h2>Signed QRs — {selected.name} ({selected.code})</h2>
           <p className="muted">Scan with any phone camera / Google Lens — it opens the public Verify page. Pasting the text also works.</p>
@@ -186,6 +196,15 @@ export function Manufacturer() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {selected && selected.products.length === 0 && (
+        <div className="card animate-in">
+          <h2>{selected.name} ({selected.code})</h2>
+          <p className="muted">
+            {selected.status === "PENDING" ? t("mfr.noQrsPending") : t("mfr.noQrsRejected")}
+          </p>
         </div>
       )}
 
