@@ -82,7 +82,9 @@ flowchart LR
 flowchart LR
 
     subgraph Manufacturer
-        A[Mint batch] --> B[Each pack gets<br/>unique serial + signed QR]
+        A[Submit mint request] --> A0{Admin approval}
+        A0 -- approved --> B[Each pack gets<br/>unique serial + signed QR]
+        A0 -- rejected --> X[Nothing is ever minted]
     end
 
     B -- MINT event --> L[(Append-only<br/>hash-chained ledger)]
@@ -145,6 +147,93 @@ CONSUMER
 ```
 
 Each important transition is validated before it becomes part of the medicine's recorded history.
+
+---
+
+# End-to-End Product Flow
+
+The complete lifecycle, from a manufacturer's mint request to a consumer's purchase, with every gate the system enforces along the way:
+
+```mermaid
+flowchart TD
+    M[Manufacturer submits<br/>mint request] --> G1{Admin reviews<br/>PENDING batch}
+    G1 -- reject --> RJ[BATCH REJECTED<br/>terminal — no packs exist]
+    G1 -- approve --> MI[Mint: per-pack serial +<br/>Ed25519-signed QR + MINT block]
+    MI --> ST1[State: CREATED]
+    ST1 --> D[Distributor scans QR<br/>POST /custody/receive]
+    D --> G2{Role + state valid?}
+    G2 -- no --> BLK[Rejected + alert]
+    G2 -- yes --> ST2[State: DISTRIBUTED<br/>RECEIVE block appended]
+    ST2 --> P[Pharmacist scans QR<br/>POST /custody/receive]
+    P --> G3{Role + state valid?}
+    G3 -- no --> BLK
+    G3 -- yes --> ST3[State: AT_PHARMACY<br/>RECEIVE block appended]
+    ST3 --> S[Pharmacist dispenses<br/>or consumer buys via /verify/buy]
+    S --> ST4[State: SOLD<br/>SELL / BUY block appended]
+    ST4 --> C[Consumer scans anytime<br/>public POST /verify]
+    C --> V{Trust engine verdict}
+    V -- clean --> GEN[GENUINE]
+    V -- behaviour flags --> SUS[SUSPICIOUS + Alert]
+    V -- identity/integrity fail --> CNTR[COUNTERFEIT + Critical alert]
+
+    SUS --> N[Alert saved to DB ·<br/>throttled email to admin inbox]
+    CNTR --> N
+```
+
+## Mint approval in detail
+
+Minting never happens on the manufacturer's word alone. An admin account must approve each request; only then are packs, signed QRs and `MINT` ledger blocks generated:
+
+```mermaid
+sequenceDiagram
+    participant M as Manufacturer
+    participant A as Admin
+    participant DB as Database
+    participant L as Ledger
+
+    M->>DB: POST /api/batches {name, quantity 1–500, route}
+    Note over DB: Batch status = PENDING.<br/>No products, no QRs, no ledger blocks yet.
+    A->>DB: GET /api/batches/pending (review queue)
+    alt approve
+        A->>L: POST /api/batches/:id/approve
+        Note over L: status → ACTIVE. Per pack:<br/>serial generated · Ed25519-signed ·<br/>Product row created · MINT block appended<br/>(payload embeds approvedBy admin id)
+        L-->>M: batch now lists products with signed QRs
+    else reject
+        A->>DB: POST /batches/:id/reject
+        Note over DB: Terminal. Nothing was ever minted.
+    end
+```
+
+The `approvedBy` field inside every `MINT` payload gives tamper-evident attribution: whoever approved a batch into existence is recorded in the ledger itself, not just in an application table.
+
+---
+
+# Consumer Purchase, AI Assistant & Notifications
+
+Beyond verification, three supporting services close the loop:
+
+```mermaid
+flowchart LR
+    subgraph Purchase
+        A[Consumer verifies pack<br/>at pharmacy] -- AT_PHARMACY --> B[POST /api/verify/buy]
+        B --> C[Pack state → SOLD<br/>BUY block appended]
+    end
+
+    subgraph Chat Assistant
+        D[User asks question] --> E[POST /api/chat<br/>backend proxy]
+        E --> F[DeepSeek API<br/>key stays server-side]
+        F --> G[Answer in user's language<br/>14 Indian languages supported]
+    end
+
+    subgraph Notifications
+        H[Recall raised] --> I[nodemailer email to all<br/>distributors + pharmacists]
+        J[Anomaly detected] --> K[Alert row always saved<br/>email throttled 10 min per type+product]
+    end
+```
+
+* **Purchase** (`POST /verify/buy`) — a consumer standing at a pharmacy can buy a verified `AT_PHARMACY` pack directly from the public verification page. The purchase appends a `BUY` ledger event and closes the chain as `SOLD`.
+* **AI assistant** (`POST /chat`) — the browser only talks to our backend proxy; the DeepSeek API key never leaves the server. The assistant receives the currently scanned pack's verdict, flags and journey as context, answers in the user's language, and follows a safety rule of never issuing definitive medical advice. If no key is configured it degrades gracefully.
+* **Notifications** — recalls email every distributor and pharmacist stakeholder (mock preview logged when SMTP is unconfigured, so recall never depends on SMTP). Anomaly alerts are always persisted to the database, but critical ones (`unminted_serial`, `bad_signature`, `unparseable_qr`, `batch_recalled`) additionally trigger throttled emails to the admin inbox so repeated scans of one fake pack don't flood it.
 
 ---
 
@@ -799,6 +888,23 @@ The objective is to create **defence in depth**.
 
 ---
 
+# API Surface
+
+Full request/response details: [`docs/api-spec.md`](docs/api-spec.md). Summary:
+
+| Group     | Endpoints                                                                 | Auth              |
+| --------- | ------------------------------------------------------------------------- | ----------------- |
+| Auth      | `POST /api/auth/register` · `POST /api/auth/login`                        | public            |
+| Batches   | `POST /api/batches` · `GET /api/batches` · `GET /api/batches/:id` · `POST /api/batches/:id/approve` · `POST /api/batches/:id/reject` · `POST /api/batches/:id/recall` | manufacturer / admin |
+| Custody   | `POST /api/custody/receive` · `POST /api/custody/sell` · `GET /api/custody/products` · `GET /api/custody/journey/:serial` | any logged-in role |
+| Verify    | `POST /api/verify` (public) · `POST /api/verify/buy` (public) · `GET /api/verify/public-key` | none |
+| Reports   | `POST /api/reports` · `GET /api/reports/reports` · `GET /api/reports/alerts` · `GET /api/reports/heatmap` | logged-in roles   |
+| Ledger    | `GET /api/ledger/recent` · `GET /api/ledger/product/:serial`              | public read       |
+| Chat      | `POST /api/chat`                                                          | public proxy      |
+| Health    | `GET /health`                                                             | public            |
+
+---
+
 # Run It
 
 ```bash
@@ -840,7 +946,7 @@ demo1234
 flowchart LR
 
     mfr["mfr@medguard.in"]
-        --> M[Manufacturer<br/>mints medicine identities]
+        --> M[Manufacturer<br/>requests + tracks batches]
 
     dist["dist@medguard.in"]
         --> D[Distributor<br/>receives and transfers stock]
@@ -849,7 +955,10 @@ flowchart LR
         --> P[Pharmacist<br/>verifies + receives + sells]
 
     consumer["consumer@medguard.in"]
-        --> C[Consumer<br/>verifies medicine journey]
+        --> C[Consumer<br/>verifies, buys, asks assistant]
+
+    admin["admin@medguard.in"]
+        --> A[Admin<br/>approves / rejects mint requests,<br/>monitors alerts]
 ```
 
 | Role         | Email                  | Home route      |
@@ -858,6 +967,9 @@ flowchart LR
 | Distributor  | `dist@medguard.in`     | `/distributor`  |
 | Pharmacist   | `pharma@medguard.in`   | `/pharmacist`   |
 | Consumer     | `consumer@medguard.in` | `/consumer`     |
+| Admin        | `admin@medguard.in`    | `/admin`        |
+
+The seed script also pre-approves one batch of 5 Paracetamol 500mg packs (`ACTIVE`) so the distributor → pharmacist → consumer demo works immediately without the admin step.
 
 ---
 
