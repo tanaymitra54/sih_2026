@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import { db } from "../config.js";
-import { RECALL_MOCK_EMAIL, SMTP_HOST, SMTP_PASS, SMTP_PORT, SMTP_USER } from "../config.js";
+import { ALERT_EMAIL, RECALL_MOCK_EMAIL, SMTP_HOST, SMTP_PASS, SMTP_PORT, SMTP_USER } from "../config.js";
 
 interface BatchLike { code: string; name: string; route: string; quantity: number }
 
@@ -12,6 +12,39 @@ interface RecallNotification {
   body: string;
   intendedRecipients: string[];
   error?: string;
+}
+
+export interface AlertLike {
+  id: string;
+  productId: string | null;
+  type: string;
+  message: string;
+  location: string | null;
+  createdAt: Date;
+}
+
+const CRITICAL_ALERT_TYPES = new Set(["unminted_serial", "bad_signature", "unparseable_qr", "batch_recalled"]);
+
+const ALERT_THROTTLE_MS = 10 * 60 * 1000;
+const recentAlertSends = new Map<string, number>();
+
+let cachedTransporter: nodemailer.Transporter | null = null;
+
+/** Shared SMTP transporter — created lazily once, reused by recall + alert emails. */
+function getTransporter(): nodemailer.Transporter {
+  if (!cachedTransporter) {
+    cachedTransporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_PORT === 465,
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+    });
+  }
+  return cachedTransporter;
+}
+
+function smtpConfigured(): boolean {
+  return Boolean(SMTP_USER && SMTP_PASS);
 }
 
 /** Sends the mock recall email without making recall itself dependent on SMTP. */
@@ -29,36 +62,78 @@ export async function notifyRecall(batch: BatchLike): Promise<RecallNotification
     "Action required: stop selling, quarantine stock, and confirm your inventory.",
   ].join("\n");
 
-  if (!SMTP_USER || !SMTP_PASS) {
-    const preview = { to: RECALL_MOCK_EMAIL, channel: "email" as const, status: "preview" as const, subject, body, intendedRecipients };
+  if (!smtpConfigured()) {
+    const preview = { to: ALERT_EMAIL, channel: "email" as const, status: "preview" as const, subject, body, intendedRecipients };
     console.log("[notify] SMTP not configured; recall email preview:", JSON.stringify(preview, null, 2));
     return [preview];
   }
 
   try {
-    const transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_PORT === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    });
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: `ORVYN alerts <${SMTP_USER}>`,
-      to: RECALL_MOCK_EMAIL,
+      to: ALERT_EMAIL,
       subject,
-      text: `${body}\n\nMock delivery recipient: ${RECALL_MOCK_EMAIL}\n\nIntended stakeholders:\n${intendedRecipients.join("\n") || "None"}`,
+      text: `${body}\n\nMock delivery recipient: ${ALERT_EMAIL}\n\nIntended stakeholders:\n${intendedRecipients.join("\n") || "None"}`,
       html: emailHtml(batch, intendedRecipients),
     });
-    return [{ to: RECALL_MOCK_EMAIL, channel: "email", status: "sent", subject, body, intendedRecipients }];
+    return [{ to: ALERT_EMAIL, channel: "email", status: "sent", subject, body, intendedRecipients }];
   } catch (error) {
     const message = error instanceof Error ? error.message : "SMTP delivery failed";
-    console.error(`[notify] recall email failed for ${RECALL_MOCK_EMAIL}:`, message);
-    return [{ to: RECALL_MOCK_EMAIL, channel: "email", status: "failed", subject, body, intendedRecipients, error: message }];
+    console.error(`[notify] recall email failed for ${ALERT_EMAIL}:`, message);
+    return [{ to: ALERT_EMAIL, channel: "email", status: "failed", subject, body, intendedRecipients, error: message }];
+  }
+}
+
+/**
+ * Emails one alert to the admin inbox (ALERT_EMAIL). Never throws.
+ * Throttled per productId+type so repeated scans of the same fake pack
+ * don't flood the inbox (the DB alert row is still always saved).
+ */
+export async function notifyAlert(alert: AlertLike): Promise<void> {
+  const key = `${alert.productId ?? "none"}:${alert.type}`;
+  const lastSentAt = recentAlertSends.get(key);
+  if (lastSentAt && Date.now() - lastSentAt < ALERT_THROTTLE_MS) return;
+
+  const critical = CRITICAL_ALERT_TYPES.has(alert.type);
+  const subject = `[ORVYN ALERT${critical ? " · CRITICAL" : ""}] ${alert.type}${alert.location ? ` @ ${alert.location}` : ""}`;
+  const body = [
+    `Type: ${alert.type}${critical ? " (CRITICAL)" : ""}`,
+    `Message: ${alert.message}`,
+    `Location: ${alert.location ?? "unknown"}`,
+    `Time: ${alert.createdAt.toISOString()}`,
+    `Product: ${alert.productId ?? "none (scan-level)"}`,
+  ].join("\n");
+
+  if (!smtpConfigured()) {
+    console.log(`[notify] SMTP not configured; alert email preview for ${ALERT_EMAIL}:\nsubject: ${subject}\n${body}`);
+    return;
+  }
+
+  try {
+    await getTransporter().sendMail({
+      from: `ORVYN alerts <${SMTP_USER}>`,
+      to: ALERT_EMAIL,
+      subject,
+      text: body,
+      html: alertEmailHtml(alert, critical),
+    });
+    recentAlertSends.set(key, Date.now());
+    pruneThrottleMap();
+  } catch (error) {
+    console.error(`[notify] alert email failed for ${ALERT_EMAIL}:`, error instanceof Error ? error.message : error);
+  }
+}
+
+function pruneThrottleMap() {
+  if (recentAlertSends.size < 500) return;
+  const cutoff = Date.now() - ALERT_THROTTLE_MS;
+  for (const [key, sentAt] of recentAlertSends) {
+    if (sentAt < cutoff) recentAlertSends.delete(key);
   }
 }
 
 function emailHtml(batch: BatchLike, intendedRecipients: string[]) {
-  const e = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
+  const e = escapeHtml;
   return `
     <div style="font-family:Arial,sans-serif;max-width:620px;color:#172230">
       <div style="padding:22px 24px;background:#172230;color:#fff;font-size:22px;font-weight:700">ORVYN</div>
@@ -74,4 +149,31 @@ function emailHtml(batch: BatchLike, intendedRecipients: string[]) {
         <p style="color:#63716c;font-size:12px">Mock email. Intended stakeholders: ${e(intendedRecipients.join(", ") || "none")}</p>
       </div>
     </div>`;
+}
+
+function alertEmailHtml(alert: AlertLike, critical: boolean) {
+  const accent = critical ? "#d65d59" : "#c07f2b";
+  const rows = [
+    ["Severity", critical ? "CRITICAL" : "Suspicious"],
+    ["Message", alert.message],
+    ["Location", alert.location ?? "unknown"],
+    ["Time (UTC)", alert.createdAt.toISOString()],
+    ["Product ID", alert.productId ?? "—"],
+  ];
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:620px;color:#172230">
+      <div style="padding:22px 24px;background:#172230;color:#fff;font-size:22px;font-weight:700">ORVYN</div>
+      <div style="padding:28px 24px;border:1px solid #dce3da">
+        <p style="color:${accent};font-weight:700;letter-spacing:.08em;text-transform:uppercase">${critical ? "Critical alert" : "Suspicious activity"}</p>
+        <h1 style="margin:0 0 18px;font-size:20px">${escapeHtml(alert.type)}</h1>
+        <table style="margin:22px 0;border-collapse:collapse;width:100%">
+          ${rows.map(([k, v]) => `<tr><td style="padding:9px 0;color:#63716c;vertical-align:top;width:130px">${escapeHtml(k)}</td><td style="padding:9px 0;font-weight:600">${escapeHtml(v)}</td></tr>`).join("")}
+        </table>
+        <p style="color:#63716c;font-size:12px">Automated ORVYN alert · delivered to ${escapeHtml(ALERT_EMAIL)} · mock delivery via ${escapeHtml(RECALL_MOCK_EMAIL)}</p>
+      </div>
+    </div>`;
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
 }

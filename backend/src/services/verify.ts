@@ -4,6 +4,7 @@ import { ACTIONS } from "../blockchain/ledger.js";
 import { missingHandoffs } from "../blockchain/ledger-core.js";
 import { verifySignature, parseQr } from "../utils/qr.js";
 import { nearestCity } from "../utils/geo.js";
+import { notifyAlert } from "./notify.js";
 
 export interface VerifyResult {
   verdict: "GENUINE" | "SUSPICIOUS" | "COUNTERFEIT";
@@ -34,7 +35,10 @@ export async function verifyProduct(
     (scan.lat != null && scan.lng != null ? nearestCity({ lat: scan.lat, lng: scan.lng }) : null);
 
   const qr = parseQr(qrText);
-  if (!qr) return { verdict: "COUNTERFEIT", flags: ["unparseable_qr"], product: null, journey: [] };
+  if (!qr) {
+    await createAlert(null, "unparseable_qr", `Unparseable QR scanned: "${qrText.slice(0, 80)}"`, alertLoc);
+    return { verdict: "COUNTERFEIT", flags: ["unparseable_qr"], product: null, journey: [] };
+  }
 
   const product = await db.product.findUnique({
     where: { serial: qr.serial },
@@ -56,6 +60,12 @@ export async function verifyProduct(
   if (product.batch.recalled) {
     flags.push("batch_recalled");
     await createAlert(product.id, "batch_recalled", `${product.serial} belongs to recalled batch ${product.batch.code}.`, alertLoc);
+  }
+
+  // Defense in depth: packs should only exist for admin-approved batches.
+  if (product.batch.status !== "ACTIVE") {
+    flags.push("batch_not_approved");
+    await createAlert(product.id, "batch_not_approved", `${product.serial}: batch ${product.batch.code} is ${product.batch.status}, never approved by an admin.`, alertLoc);
   }
 
   const blocks = await productBlocks(product.id);
@@ -131,7 +141,9 @@ async function createAlert(productId: string | null, type: string, message: stri
     scan_flood: "HIGH",
     unminted_serial: "CRITICAL",
   };
-  await db.alert.create({ data: { productId, type, message, location: location ?? null, severity: severityMap[type] ?? "MEDIUM" } });
+  const alert = await db.alert.create({ data: { productId, type, message, location: location ?? null, severity: severityMap[type] ?? "MEDIUM" } });
+  // Fire-and-forget: SMTP must never slow down or fail a verification response.
+  void notifyAlert(alert).catch((err) => console.error("[verify] alert email error:", err));
 }
 
 function safeParse(s: string): Record<string, unknown> {

@@ -8,6 +8,7 @@ import { Manufacturer } from "./pages/Manufacturer";
 import { Distributor } from "./pages/Distributor";
 import { Pharmacist } from "./pages/Pharmacist";
 import { Consumer } from "./pages/Consumer";
+import { Admin } from "./pages/Admin";
 import { Alerts } from "./pages/Alerts";
 import { HeatmapV2Page } from "./pages/HeatmapV2";
 import { OfflineBanner } from "./components/OfflineBanner";
@@ -58,19 +59,35 @@ function Nav() {
 
   return (
     <>
-      <div className="tricolor" aria-hidden="true" />
-
-      {!user ? (
-        <header className="nav nav--public">
-          <div className="nav-inner">
-            <BrandLockup />
-            <div className="nav-right">
-              <LanguageToggle />
-              <ThemeToggle theme={theme} isAuto={isAuto} toggle={toggle} />
+      <div className="top-chrome">
+        <div className="tricolor" aria-hidden="true" />
+        {!user ? (
+          <header className="nav nav--public">
+            <div className="nav-inner">
+              <BrandLockup />
+              <div className="nav-right">
+                <LanguageToggle />
+                <ThemeToggle theme={theme} isAuto={isAuto} toggle={toggle} />
+              </div>
             </div>
-          </div>
-        </header>
-      ) : (
+          </header>
+        ) : (
+          <header className="nav">
+            <div className="nav-inner">
+              <BrandLockup compact />
+              <span className="top-context">{user.role} workspace <span className="status-pip" /></span>
+              <div className="nav-right">
+                <span className="user-chip"><strong>{user.name}</strong> · {user.role}</span>
+                <LanguageToggle />
+                <ThemeToggle theme={theme} isAuto={isAuto} toggle={toggle} />
+                <button className="btn btn-ghost small" onClick={logout}>{t("nav.logout")}</button>
+              </div>
+            </div>
+          </header>
+        )}
+      </div>
+
+      {user && (
         <>
           <aside className="side-rail">
             <div className="rail-brand"><BrandLockup /></div>
@@ -84,18 +101,6 @@ function Nav() {
               <span className="status-pip" /> Systems operational
             </div>
           </aside>
-          <header className="nav">
-            <div className="nav-inner">
-              <BrandLockup compact />
-              <span className="top-context">{user.role} workspace <span className="status-pip" /></span>
-              <div className="nav-right">
-                <span className="user-chip"><strong>{user.name}</strong> · {user.role}</span>
-                <LanguageToggle />
-                <ThemeToggle theme={theme} isAuto={isAuto} toggle={toggle} />
-                <button className="btn btn-ghost small" onClick={logout}>{t("nav.logout")}</button>
-              </div>
-            </div>
-          </header>
 
           <nav className="tabbar">
             <div className="tabbar-inner">
@@ -130,14 +135,15 @@ function Guard({ role, children }: { role: string; children: ReactNode }) {
   return <>{children}</>;
 }
 
-export default function App() {
+function Shell() {
   const { user } = useAuth();
+
   return (
-    <BrowserRouter>
+    <>
       <OfflineBanner />
       <Toaster position="top-right" richColors closeButton />
       <Nav />
-       <main className={`page ${user ? "page--app" : "page--public"}`}>
+      <main className={`page ${user ? "page--app" : "page--public"}`}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Navigate to={user ? `/${user.role}` : "/login"} replace />} />
@@ -145,12 +151,21 @@ export default function App() {
           <Route path="/distributor" element={<Guard role="distributor"><Distributor /></Guard>} />
           <Route path="/pharmacist" element={<Guard role="pharmacist"><Pharmacist /></Guard>} />
           <Route path="/consumer" element={<Guard role="consumer"><Consumer /></Guard>} />
+          <Route path="/admin" element={<Guard role="admin"><Admin /></Guard>} />
           <Route path="/consumer/verify" element={<Consumer />} />
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/heatmap-v2" element={<HeatmapV2Page />} />
           <Route path="*" element={<Navigate to={user ? `/${user.role}` : "/login"} replace />} />
         </Routes>
       </main>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Shell />
     </BrowserRouter>
   );
 }

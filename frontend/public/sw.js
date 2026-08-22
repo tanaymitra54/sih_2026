@@ -1,4 +1,4 @@
-const CACHE = "medguard-v1";
+const CACHE = "medguard-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -15,6 +15,19 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   if (request.url.includes("/api/")) return; // never cache API responses
+
+  // App shell: network-first so deploys land immediately, cache only as offline fallback.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          caches.open(CACHE).then((cache) => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(request)),
+    );
+    return;
+  }
 
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {

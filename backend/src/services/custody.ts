@@ -14,6 +14,8 @@ export async function receiveProduct(user: { id: string; role: string }, qrText:
 
   const product = await db.product.findUnique({ where: { serial: qr.serial }, include: { batch: true } });
   if (!product) throw new Error("not_minted");
+  // Defense in depth: packs of unapproved/rejected batches must never enter custody.
+  if (product.batch.status !== "ACTIVE") throw new Error("batch_not_approved");
 
   let nextState: string;
   if (user.role === "distributor" && product.state === "CREATED") {

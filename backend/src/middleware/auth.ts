@@ -35,6 +35,7 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     "invalid_credentials", "invalid_role", "invalid_quantity", "invalid_qr", "not_found",
     "not_minted", "cannot_receive_from_state_", "cannot_sell_from_", "cannot_buy_from_", "receive_failed",
     "already_recalled", "chat_empty", "chat_timeout", "chat_api_error",
+    "batch_not_approved", "batch_already_processed",
   ]);
   if (msg === "not_owner") {
     res.status(403).json({ error: msg });
