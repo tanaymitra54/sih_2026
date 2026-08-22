@@ -3,21 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../store";
 import { useI18n } from "../i18n";
-import { BrandLockup } from "../components/BrandLockup";
-import { ArrowRightIcon, CheckIcon, ScanIcon } from "../components/icons";
+import { LoginHero } from "../components/LoginHero";
+import { ArrowRightIcon } from "../components/icons";
 
-const DEMO_USERS: Record<string, { email: string; labelKey: string }> = {
-  mfr: { email: "mfr@medguard.in", labelKey: "login.role.manufacturer" },
-  dist: { email: "dist@medguard.in", labelKey: "login.role.distributor" },
-  pharma: { email: "pharma@medguard.in", labelKey: "login.role.pharmacist" },
-  consumer: { email: "consumer@medguard.in", labelKey: "login.role.consumer" },
-  admin: { email: "admin@medguard.in", labelKey: "login.role.admin" },
+const DEMO_USERS: Record<string, { email: string; labelKey: string; code: string }> = {
+  mfr: { email: "mfr@medguard.in", labelKey: "login.role.manufacturer", code: "MFR" },
+  dist: { email: "dist@medguard.in", labelKey: "login.role.distributor", code: "DST" },
+  pharma: { email: "pharma@medguard.in", labelKey: "login.role.pharmacist", code: "RX" },
+  consumer: { email: "consumer@medguard.in", labelKey: "login.role.consumer", code: "USR" },
+  admin: { email: "admin@medguard.in", labelKey: "login.role.admin", code: "ADM" },
 };
 
 export function Login() {
   const [email, setEmail] = useState("mfr@medguard.in");
   const [password, setPassword] = useState("demo1234");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const setUser = useAuth((s) => s.setUser);
   const navigate = useNavigate();
   const { t } = useI18n();
@@ -25,6 +26,7 @@ export function Login() {
   async function submit(e?: React.FormEvent) {
     e?.preventDefault();
     setError("");
+    setLoading(true);
     try {
       const { data } = await api.post("/auth/login", { email, password });
       localStorage.setItem("medguard_token", data.token);
@@ -34,69 +36,82 @@ export function Login() {
       if (!e.response) setError("Cannot reach the server — is the backend running? (npm run dev)");
       else if (e.response.status === 401) setError("Invalid credentials — try the demo accounts with password demo1234");
       else setError(e.response.data?.error ?? `Login failed (${e.response.status})`);
+    } finally {
+      setLoading(false);
     }
   }
 
   const activeRole = Object.keys(DEMO_USERS).find((k) => DEMO_USERS[k].email === email);
 
   return (
-    <div className="login-wrap">
-      <div className="login-story">
-        <BrandLockup />
-        <p className="eyebrow">Trusted medicine infrastructure</p>
-        <h2>Every pack has a story.<br /><em>Make it verifiable.</em></h2>
-        <p className="story-copy">A quiet layer of protection for the people who make, move, dispense, and depend on medicine.</p>
-        <div className="story-list">
-          <span><CheckIcon size={15} /> Signed at source</span>
-          <span><ScanIcon size={15} /> Traced in motion</span>
-          <span><CheckIcon size={15} /> Verified at the point of care</span>
-        </div>
-        <div className="reference-card" aria-label="Live verification reference">
-          <img src="/reference-card.png" alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
-          <div className="reference-card-fallback">
-            <div><span>▥ 24K</span><span>◷ Today, 8:00 PM</span><span>● Live network</span></div>
-            <strong>Every pack carries a verifiable chain.</strong>
-            <div className="reference-actions"><span>Minted · 1¢</span><span>Verified · 99¢</span></div>
-          </div>
-        </div>
-        <div className="story-orbit orbit-one" /><div className="story-orbit orbit-two" />
-      </div>
-      <div className="login-card animate-in">
-        <div className="login-brand">
-          <BrandLockup />
-          <p className="muted">{t("login.subtitle")}</p>
-        </div>
+    <div className="login-page">
+      <div className="login-shell">
+        <LoginHero />
 
-        <form onSubmit={submit}>
-          <div className="seg" role="tablist" aria-label="Select demo role">
-            {Object.entries(DEMO_USERS).map(([k, v]) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={activeRole === k}
-                className={activeRole === k ? "active" : ""}
-                onClick={() => setEmail(v.email)}
-              >
-                {t(v.labelKey)}
-              </button>
-            ))}
-          </div>
+        <aside className="login-card">
+          <header className="login-head">
+            <h2>Sign in</h2>
+            <p>{t("login.subtitle")}</p>
+          </header>
 
-          <div className="field">
-            <label htmlFor="login-email">{t("login.email")}</label>
-            <input id="login-email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
-          </div>
-          <div className="field">
-            <label htmlFor="login-password">{t("login.password")}</label>
-            <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-          </div>
+          <form className="login-form" onSubmit={submit}>
+            <fieldset className="login-roles">
+              <legend>Select demo role</legend>
+              <div className="role-grid" role="tablist" aria-label="Select demo role">
+                {Object.entries(DEMO_USERS).map(([k, v]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeRole === k}
+                    className={`role-pill${activeRole === k ? " active" : ""}`}
+                    onClick={() => setEmail(v.email)}
+                  >
+                    <span className="role-code">{v.code}</span>
+                    <span className="role-label">{t(v.labelKey)}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
 
-          {error && <p className="error">{error}</p>}
-          <button type="submit" className="btn btn-saffron btn-block" style={{ marginTop: 4 }}>{t("login.submit")} <ArrowRightIcon /></button>
-        </form>
+            <div className="login-field">
+              <label htmlFor="login-email">{t("login.email")}</label>
+              <input
+                id="login-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
+                spellCheck={false}
+              />
+            </div>
 
-        <p className="caption" style={{ textAlign: "center", marginTop: 14 }}>{t("login.demo")} <strong>demo1234</strong></p>
+            <div className="login-field">
+              <label htmlFor="login-password">{t("login.password")}</label>
+              <input
+                id="login-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+
+            {error && (
+              <p className="error" role="alert" style={{ marginBottom: "0.75rem" }}>
+                {error}
+              </p>
+            )}
+
+            <button type="submit" className="btn btn-green btn-block" disabled={loading}>
+              <span>{loading ? "Authenticating…" : t("login.submit")}</span>
+              <ArrowRightIcon />
+            </button>
+          </form>
+
+          <footer className="login-foot">
+            <span>{t("login.demo")} <strong>demo1234</strong></span>
+          </footer>
+        </aside>
       </div>
     </div>
   );
