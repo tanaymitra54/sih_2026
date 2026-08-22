@@ -38,7 +38,7 @@ export function Pharmacist() {
       setScanPos(pos);
       // One scan advances the chain: receive (DISTRIBUTED → AT_PHARMACY) then verify.
       try {
-        const r = await api.post("/custody/receive", { qr });
+        const r = await api.post("/custody/receive", { qr, scan: pos ? { lat: pos.lat, lng: pos.lng } : {} });
         toast.success(`Received ${r.data.serial} — state ${r.data.state}. Custody block appended.`);
         load();
       } catch (e: any) {
@@ -54,7 +54,9 @@ export function Pharmacist() {
 
   async function sell(serial: string) {
     try {
-      const { data } = await api.post("/custody/sell", { serial });
+      // Get current GPS location for the custody block
+      const pos = await getPosition();
+      const { data } = await api.post("/custody/sell", { serial, scan: pos ? { lat: pos.lat, lng: pos.lng } : {} });
       toast.success(`Dispensed ${data.serial} — state SOLD. Chain closed.`);
       setResult(null);
       load();

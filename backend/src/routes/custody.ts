@@ -8,13 +8,13 @@ r.use(auth);
 
 r.post("/receive", requireRole("distributor", "pharmacist"), async (req: AuthedRequest, res, next) => {
   try {
-    res.json(await receiveProduct(req.user!, req.body.qr));
+    res.json(await receiveProduct(req.user!, req.body.qr, req.body.scan));
   } catch (e) { next(e); }
 });
 
 r.post("/sell", requireRole("pharmacist"), async (req: AuthedRequest, res, next) => {
   try {
-    res.json(await sellProduct(req.user!.id, req.body.serial));
+    res.json(await sellProduct(req.user!.id, req.body.serial, req.body.scan));
   } catch (e) { next(e); }
 });
 

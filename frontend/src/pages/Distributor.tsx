@@ -9,6 +9,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
 import { JourneyMap } from "../components/JourneyMap";
 import { BoxIcon, TruckIcon } from "../components/icons";
+import { getPosition } from "../utils/getPosition";
 
 interface CustodyRow { serial: string; name: string; route: string; state: string; }
 
@@ -34,7 +35,9 @@ export function Distributor() {
   async function receive(qr: string) {
     setJourney(null);
     try {
-      const { data } = await api.post("/custody/receive", { qr });
+      // Get current GPS location for the custody block
+      const pos = await getPosition();
+      const { data } = await api.post("/custody/receive", { qr, scan: pos ? { lat: pos.lat, lng: pos.lng } : {} });
       toast.success(`Received ${data.serial} — state ${data.state}. Custody block appended to the ledger.`);
       const j = await api.get(`/custody/journey/${data.serial}`);
       setJourney(j.data.journey);

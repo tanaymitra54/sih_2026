@@ -119,7 +119,19 @@ export async function verifyProduct(
   };
 }
 async function createAlert(productId: string | null, type: string, message: string, location?: string | null) {
-  await db.alert.create({ data: { productId, type, message, location: location ?? null } });
+  const severityMap: Record<string, "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"> = {
+    unparseable_qr: "CRITICAL",
+    not_minted: "CRITICAL",
+    bad_signature: "CRITICAL",
+    batch_recalled: "HIGH",
+    chain_broken: "CRITICAL",
+    missing_handoff: "HIGH",
+    sold_then_scanned: "HIGH",
+    route_mismatch: "MEDIUM",
+    scan_flood: "HIGH",
+    unminted_serial: "CRITICAL",
+  };
+  await db.alert.create({ data: { productId, type, message, location: location ?? null, severity: severityMap[type] ?? "MEDIUM" } });
 }
 
 function safeParse(s: string): Record<string, unknown> {

@@ -2,19 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "../api";
 import { useI18n } from "../i18n";
-import { FraudMap, type HeatSpot } from "../components/FraudMap";
+import { HeatmapV2 } from "../components/HeatmapV2";
 import { AlertIcon } from "../components/icons";
 
 interface AlertItem { id: string; type: string; message: string; createdAt: string; product: { serial: string } | null; }
 
 export function Alerts() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
-  const [spots, setSpots] = useState<HeatSpot[]>([]);
   const { t } = useI18n();
 
   useEffect(() => {
     api.get("/reports/alerts").then(({ data }) => setAlerts(data));
-    api.get("/reports/heatmap").then(({ data }) => setSpots(data)).catch(() => {});
   }, []);
 
   const byType = useMemo(() => {
@@ -47,17 +45,7 @@ export function Alerts() {
 
       <div className="card">
         <h2>{t("alerts.hotspots")}</h2>
-        <FraudMap spots={spots} />
-        {spots.length > 0 && (
-          <div className="hotspots">
-            {spots.map((s) => (
-              <div key={s.location} className="hotspot" title={`${s.location}: ${s.count}`}>
-                <span className="hotspot-name">{s.location}</span>
-                <span className="hotspot-count">{s.count}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <HeatmapV2 />
       </div>
 
       <div className="group">
