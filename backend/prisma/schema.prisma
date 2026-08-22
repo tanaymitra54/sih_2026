@@ -89,5 +89,6 @@ model Alert {
   type      String
   message   String
   location  String?
+  severity  String   @default("MEDIUM")
   createdAt DateTime @default(now())
 }

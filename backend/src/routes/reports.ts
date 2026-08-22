@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { auth, type AuthedRequest } from "../middleware/auth.js";
 import { createReport, listAlerts, listReports, heatmap } from "../services/reports.js";
+import { heatmapV2 } from "../services/heatmapV2.js";
 
 const r = Router();
 
@@ -25,6 +26,20 @@ r.get("/alerts", auth, async (_req, res, next) => {
 r.get("/heatmap", auth, async (_req, res, next) => {
   try {
     res.json(await heatmap());
+  } catch (e) { next(e); }
+});
+
+r.get("/heatmap-v2", async (req, res, next) => {
+  try {
+    const { timeRange, types, severity, bounds, zoom, includeScans } = req.query;
+    res.json(await heatmapV2({
+      timeRange: timeRange as string,
+      types: types ? (types as string).split(",") : undefined,
+      severity: severity ? (severity as string).split(",") : undefined,
+      bounds: bounds ? JSON.parse(bounds as string) : undefined,
+      zoom: zoom ? parseInt(zoom as string) : undefined,
+      includeScans: includeScans === "true",
+    }));
   } catch (e) { next(e); }
 });
 

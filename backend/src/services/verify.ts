@@ -129,7 +129,19 @@ export async function verifyProduct(
   };
 }
 async function createAlert(productId: string | null, type: string, message: string, location?: string | null) {
-  const alert = await db.alert.create({ data: { productId, type, message, location: location ?? null } });
+  const severityMap: Record<string, "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"> = {
+    unparseable_qr: "CRITICAL",
+    not_minted: "CRITICAL",
+    bad_signature: "CRITICAL",
+    batch_recalled: "HIGH",
+    chain_broken: "CRITICAL",
+    missing_handoff: "HIGH",
+    sold_then_scanned: "HIGH",
+    route_mismatch: "MEDIUM",
+    scan_flood: "HIGH",
+    unminted_serial: "CRITICAL",
+  };
+  const alert = await db.alert.create({ data: { productId, type, message, location: location ?? null, severity: severityMap[type] ?? "MEDIUM" } });
   // Fire-and-forget: SMTP must never slow down or fail a verification response.
   void notifyAlert(alert).catch((err) => console.error("[verify] alert email error:", err));
 }

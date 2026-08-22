@@ -10,6 +10,7 @@ import { Pharmacist } from "./pages/Pharmacist";
 import { Consumer } from "./pages/Consumer";
 import { Admin } from "./pages/Admin";
 import { Alerts } from "./pages/Alerts";
+import { HeatmapV2Page } from "./pages/HeatmapV2";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { BrandLockup } from "./components/BrandLockup";
 import { BellIcon, HomeIcon, LogoutIcon, MoonIcon, ScanIcon, SunIcon } from "./components/icons";
@@ -153,6 +154,7 @@ function Shell() {
           <Route path="/admin" element={<Guard role="admin"><Admin /></Guard>} />
           <Route path="/consumer/verify" element={<Consumer />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/heatmap-v2" element={<HeatmapV2Page />} />
           <Route path="*" element={<Navigate to={user ? `/${user.role}` : "/login"} replace />} />
         </Routes>
       </main>

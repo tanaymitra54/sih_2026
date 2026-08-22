@@ -2,13 +2,13 @@ import { db } from "../config.js";
 import { appendBlock, productBlocks } from "../blockchain/ledger.js";
 import { ACTIONS } from "../blockchain/ledger.js";
 import { parseQr, encodeQr } from "../utils/qr.js";
-import { resolveCoords } from "../utils/geo.js";
+import { resolveCoords, nearestCity } from "../utils/geo.js";
 
 /**
  * Distributor or pharmacist receives custody of a product by scanning its QR.
  * Enforces the chain order: CREATED → (distributor) → DISTRIBUTED → (pharmacist) → AT_PHARMACY.
  */
-export async function receiveProduct(user: { id: string; role: string }, qrText: string) {
+export async function receiveProduct(user: { id: string; role: string }, qrText: string, scan?: { lat?: number; lng?: number }) {
   const qr = parseQr(qrText);
   if (!qr) throw new Error("invalid_qr");
 
@@ -39,19 +39,29 @@ export async function receiveProduct(user: { id: string; role: string }, qrText:
 
   await db.product.update({ where: { id: product.id }, data: { state: nextState } });
   const actor = await db.user.findUnique({ where: { id: user.id } });
-  const coords = resolveCoords(actor?.location);
+  
+  // Prefer GPS from scan, fallback to user profile location
+  let coords: { lat: number; lng: number } | null = null;
+  let locationName = actor?.location ?? "";
+  if (scan?.lat != null && scan?.lng != null) {
+    coords = { lat: scan.lat, lng: scan.lng };
+    locationName = nearestCity({ lat: scan.lat, lng: scan.lng }) ?? actor?.location ?? "";
+  } else {
+    coords = resolveCoords(actor?.location);
+  }
+  
   await appendBlock({
     productId: product.id,
     action: ACTIONS.RECEIVE,
     signer: user.id,
-    payload: JSON.stringify({ role: user.role, location: actor?.location ?? "", ...(coords ?? {}) }),
+    payload: JSON.stringify({ role: user.role, location: locationName, ...(coords ?? {}) }),
   });
 
   return { ...product, state: nextState };
 }
 
 /** Pharmacist dispenses a product that has reached AT_PHARMACY. */
-export async function sellProduct(pharmacistId: string, serial: string) {
+export async function sellProduct(pharmacistId: string, serial: string, scan?: { lat?: number; lng?: number }) {
   const product = await db.product.findUnique({ where: { serial } });
   if (!product) throw new Error("not_found");
   if (product.state !== "AT_PHARMACY") {
@@ -68,12 +78,22 @@ export async function sellProduct(pharmacistId: string, serial: string) {
 
   await db.product.update({ where: { id: product.id }, data: { state: "SOLD" } });
   const pharma = await db.user.findUnique({ where: { id: pharmacistId } });
-  const coords = resolveCoords(pharma?.location);
+  
+  // Prefer GPS from scan, fallback to user profile location
+  let coords: { lat: number; lng: number } | null = null;
+  let locationName = pharma?.location ?? "";
+  if (scan?.lat != null && scan?.lng != null) {
+    coords = { lat: scan.lat, lng: scan.lng };
+    locationName = nearestCity({ lat: scan.lat, lng: scan.lng }) ?? pharma?.location ?? "";
+  } else {
+    coords = resolveCoords(pharma?.location);
+  }
+  
   await appendBlock({
     productId: product.id,
     action: ACTIONS.SELL,
     signer: pharmacistId,
-    payload: JSON.stringify({ by: "pharmacist", location: pharma?.location ?? "", ...(coords ?? {}) }),
+    payload: JSON.stringify({ by: "pharmacist", location: locationName, ...(coords ?? {}) }),
   });
   return { ...product, state: "SOLD" };
 }
