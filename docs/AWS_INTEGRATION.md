@@ -62,7 +62,7 @@ ORVYN keeps its **SQLite hash-chained ledger as the system of record**, and uses
 | 8 | **AWS IAM** | `orvyn-ec2-role` (instance profile, no long-lived keys) and `orvyn-integrity-lambda-role`, both least-privilege (S3 scoped to one bucket, DynamoDB scoped to one table, SNS scoped to one topic). | **Zero static credentials on the server.** The EC2 box assumes a role; nothing to leak in git. | IAM policies |
 | 9 | **AWS Secrets Manager** | `orvyn/jwt-secret`, `orvyn/qr-hmac-secret`, fetched at deploy time by the instance role into a `0600` `.env`. | Signing secrets are **never in the repo, never in user-data, never in an AMI**. Rotation-ready. | `backend/scripts/fetch-secrets.mjs` |
 | 10 | **Amazon CloudFront** | One distribution, HTTPS, two origins: default → S3 site, `/api/*` → EC2. Private S3 via Origin Access Control. | **Single-origin architecture**: no CORS configuration and no mixed-content failures; the SPA and API share one secure domain. | distribution `E2YJH7CFDMIHN1` |
-| 11 | **Amazon EC2** | `t4g.small` (Graviton/ARM), Ubuntu 24.04, 12 GB gp3, Elastic IP `13.239.160.213`, pm2-managed Express API. | Runs the stateful SQLite + key material that serverless cannot hold — an honest architectural choice, not a default. | instance `i-06e36941391bca86f` |
+| 11 | **Amazon EC2** | `t4g.small` (Graviton/ARM), Ubuntu 24.04, 12 GB gp3, Elastic IP `13.239.160.213`, pm2-managed Express API behind Nginx on port 80. | Runs the stateful SQLite + key material that serverless cannot hold — an honest architectural choice, not a default. Nginx terminates the CloudFront origin hop and keeps the Node process unprivileged on :4000. | instance `i-06e36941391bca86f` |
 | 12 | **Amazon S3 static hosting (OAC)** | Serves the Vite build; bucket blocked from public access. | Private-by-default hosting: CloudFront is the only reader, enforced by bucket policy `AWS:SourceArn`. | bucket policy |
 
 **Deliberately not used:** SES (SNS already covers alert email and avoids sandbox verification), WAF (cost/time vs. demo value), RDS (SQLite is sufficient at demo scale and avoids a migration).
@@ -83,9 +83,12 @@ Checked on 2026-10-21 against the real account (not mocked).
 | KMS signing | batch backfill | manifest + `.sig` + `public-key.pem` written to S3 | ✅ |
 | Lambda | `Invoke` (RequestResponse) | `{"ok": true, "blockCount": 8, "errors": []}` | ✅ |
 | EventBridge | `ListRules` | `orvyn-nightly-integrity`, `rate(1 day)`, **ENABLED** | ✅ |
-| CloudWatch alarm | `DescribeAlarms` | `ORVYN-CounterfeitDetected`, state OK, metric `CounterfeitScans` | ✅ |
+| CloudWatch alarm | `DescribeAlarms` | `ORVYN-CounterfeitDetected`, metric `CounterfeitScans`, **state ALARM** after a live counterfeit scan (threshold crossed at 10:14, evaluated 10:19) | ✅ |
 | CloudWatch dashboard | `ListDashboards` | `ORVYN-Demo` (4 widgets) | ✅ |
-| CloudFront | `GetDistribution` | `d1bxeh2lzuam2u.cloudfront.net`, `/api/*` behaviour attached | ⏳ first deploy |
+| CloudFront | `GetDistribution` | `d1bxeh2lzuam2u.cloudfront.net`, status **Deployed**, `/api/*` → EC2, default → S3 `/site` | ✅ |
+| Public site | `GET https://d1bxeh2lzuam2u.cloudfront.net/` | **HTTP 200**, title `ORVYN — Counterfeit Medicine Detection` | ✅ |
+| API through CDN | `GET /api/aws/status` via CloudFront | `enabled:true`, `s3.reachable:true`, `dynamodb.recentEvents:7` | ✅ |
+| Verify through CDN | `POST /api/verify` via CloudFront | **`{"verdict":"GENUINE","flags":[]}`** | ✅ |
 | EC2 | `DescribeInstances` | `i-06e36941391bca86f` `t4g.small` running, EIP `13.239.160.213` | ✅ |
 | EC2 app | `GET /health` | `{"ok":true}` | ✅ |
 | AWS status API | `GET /api/aws/status` | `enabled: true`, `s3.reachable: true`, region `ap-southeast-2` | ✅ |
@@ -115,6 +118,8 @@ Checked on 2026-10-21 against the real account (not mocked).
 
 Judge-facing URL: **`https://d1bxeh2lzuam2u.cloudfront.net`** (API: `/api/aws/status`).
 
+Verified live: site returns HTTP 200, `/api/aws/status` reports 7 recent DynamoDB events, and a genuine scan through CloudFront returns `GENUINE` with zero flags.
+
 ---
 
 ## 5. Cost
@@ -134,6 +139,6 @@ Against $100 credits, that is **≈5 months** of continuous running — longer i
 
 ## 6. Pending / manual steps
 
-1. **Confirm the SNS subscription** — AWS emailed `tanaymitra9@gmail.com`; click *Confirm subscription*. Until then, alert emails will not deliver (the topic still records publishes).
-2. **CloudFront first deploy** — status was `InProgress` when this report was written; it settles to `Deployed` in ~5–15 minutes.
-3. **Teardown after the demo** — see `infra/teardown.md`.
+1. **Confirm the SNS subscription** (the only blocker) — AWS emailed `tanaymitra9@gmail.com`; click *Confirm subscription*. Until then, alert emails will not deliver (the topic still records publishes, and the CloudWatch alarm still fires).
+2. **Teardown after the demo** — see `infra/teardown.md`.
+3. **Keep the EC2 key** — `~/.ssh/orvyn-demo` on the admin machine is the only way to SSH in; `backend/keys/mfr-ed25519.json` on the instance is the only copy of the manufacturer signing key.
