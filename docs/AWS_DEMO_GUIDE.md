@@ -39,6 +39,20 @@ Open these in order. Exact deep links for account `367722595624`, region `ap-sou
 
 ---
 
+## Before you walk in (30-second check)
+
+1. Open **https://d1bxeh2lzuam2u.cloudfront.net** → the login page should render.
+2. Open **https://d1bxeh2lzuam2u.cloudfront.net/api/aws/status** → `"enabled": true` and `"s3": {"reachable": true}`.
+3. If that is green, everything else is up — CloudFront, EC2, DynamoDB, S3, SNS, KMS, Lambda, CloudWatch.
+
+**Nothing needs to be started, and there is no cron job to run.** Managed services (S3, DynamoDB, KMS, SNS, Lambda, CloudFront, CloudWatch) are always on. The EC2 app is registered with `pm2 startup` and `pm2 save`, so it self-recovers after a reboot — verified: the API was serving again ~75 s after a full reboot. The nightly ledger check is an EventBridge rule (`rate(1 day)`), not a server crontab.
+
+If you ever stop the instance manually, just start it again — the Elastic IP keeps the URL unchanged and the app boots itself.
+
+---
+
+Open these in sequence. Each row: what to click, what to point at, what to say.
+
 ## The 8-minute order
 
 Open these in sequence. Each row: what to click, what to point at, what to say.
