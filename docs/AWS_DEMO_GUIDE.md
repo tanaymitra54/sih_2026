@@ -51,8 +51,6 @@ If you ever stop the instance manually, just start it again — the Elastic IP k
 
 ---
 
-Open these in sequence. Each row: what to click, what to point at, what to say.
-
 ## The 8-minute order
 
 Open these in sequence. Each row: what to click, what to point at, what to say.
