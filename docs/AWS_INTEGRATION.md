@@ -78,7 +78,7 @@ Checked on 2026-10-21 against the real account (not mocked).
 | S3 artifacts | `ListObjectsV2` | **16 objects** — 5 QR PNGs, 3 manifest files, 6 site files, ledger snapshot | ✅ |
 | S3 encryption + versioning | bucket config | SSE-S3, versioning Enabled, public access blocked | ✅ |
 | DynamoDB | `Scan` on `orvyn-scan-events` | **7 items**, verdicts + flags + geo present | ✅ |
-| SNS topic | `ListSubscriptionsByTopic` | topic exists, 1 subscription — **`PendingConfirmation`** | ⚠️ **click the email** |
+| SNS topic | `ListSubscriptionsByTopic` | topic exists, subscription **Confirmed** (`tanaymitra9@gmail.com`) | ✅ |
 | KMS | `DescribeKey` | `ECC_NIST_P256`, `SIGN_VERIFY`, state **Enabled** | ✅ |
 | KMS signing | batch backfill | manifest + `.sig` + `public-key.pem` written to S3 | ✅ |
 | Lambda | `Invoke` (RequestResponse) | `{"ok": true, "blockCount": 8, "errors": []}` | ✅ |
@@ -139,6 +139,6 @@ Against $100 credits, that is **≈5 months** of continuous running — longer i
 
 ## 6. Pending / manual steps
 
-1. **Confirm the SNS subscription** (the only blocker) — AWS emailed `tanaymitra9@gmail.com`; click *Confirm subscription*. Until then, alert emails will not deliver (the topic still records publishes, and the CloudWatch alarm still fires).
+1. **SNS subscription is confirmed** (`tanaymitra9@gmail.com`) — alert emails deliver. Verify once in the console (SNS → orvyn-alerts → subscription status **Confirmed**) before presenting.
 2. **Teardown after the demo** — see `infra/teardown.md`.
 3. **Keep the EC2 key** — `~/.ssh/orvyn-demo` on the admin machine is the only way to SSH in; `backend/keys/mfr-ed25519.json` on the instance is the only copy of the manufacturer signing key.

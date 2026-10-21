@@ -104,7 +104,7 @@ Open: [CloudWatch → ORVYN-Demo dashboard](https://ap-southeast-2.console.aws.a
 Open: [SNS → orvyn-alerts](https://ap-southeast-2.console.aws.amazon.com/sns/v3/home?region=ap-southeast-2#/topics)
 
 - **Say:** "Counterfeit and recall alerts publish here, independent of our SMTP path."
-- **Important:** the subscription must show **Confirmed**, not PendingConfirmation. If it is pending, click the link in the AWS email sent to `tanaymitra9@gmail.com` **before** the demo.
+- The subscription to `tanaymitra9@gmail.com` is **Confirmed** — the alert email will arrive on your phone during the demo.
 
 ### 9. Secrets Manager + IAM — no secrets in the repo (45s)
 
