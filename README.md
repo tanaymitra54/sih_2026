@@ -33,6 +33,30 @@ A counterfeit or suspicious medicine may therefore be detected because it was:
 
 ---
 
+## 🌐 Live deployment (AWS)
+
+**App:** https://d1bxeh2lzuam2u.cloudfront.net · **API status:** [`/api/aws/status`](https://d1bxeh2lzuam2u.cloudfront.net/api/aws/status)
+
+ORVYN runs on AWS (account `367722595624`, region `ap-southeast-2`) with a second, independent trust plane alongside the SQLite ledger:
+
+| Service | Role |
+|---|---|
+| **CloudFront** | Single HTTPS origin — SPA from S3, `/api/*` to EC2 |
+| **S3** | Private, versioned, encrypted store for QR PNGs, signed manifests, ledger snapshots |
+| **DynamoDB** | Append-only `orvyn-scan-events` log, outside the app database |
+| **KMS** | HSM-backed ECC P-256 manifest signing (`alias/orvyn-pack-signer`) |
+| **Lambda + EventBridge** | Nightly independent hash-chain verification |
+| **CloudWatch** | `ORVYN` metrics, dashboard, and the counterfeit alarm |
+| **SNS** | Counterfeit / recall alert fan-out |
+| **IAM + Secrets Manager** | Instance roles, least privilege, no static keys |
+| **EC2** | `t4g.small` running the Express + SQLite backend behind Nginx |
+
+📄 [Full AWS integration report](./docs/AWS_INTEGRATION.md) — architecture, per-service innovation, live verification log
+🎤 [Faculty demo guide](./docs/AWS_DEMO_GUIDE.md) — console deep links and the 8-minute walkthrough
+🧹 [Teardown](./infra/teardown.md) — stop the meter after the demo
+
+---
+
 # The Core Shift
 
 Traditional QR verification often asks:
