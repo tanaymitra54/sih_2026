@@ -13,6 +13,32 @@ Live app: **https://d1bxeh2lzuam2u.cloudfront.net**
 
 ---
 
+## Quick link table — every service, one click
+
+Open these in order. Exact deep links for account `367722595624`, region `ap-southeast-2`.
+
+| Order | Service | Direct link |
+|---|---|---|
+| 0 | Live status JSON | [d1bxeh2lzuam2u.cloudfront.net/api/aws/status](https://d1bxeh2lzuam2u.cloudfront.net/api/aws/status) |
+| 1 | CloudFront | [distribution E2YJH7CFDMIHN1](https://us-east-1.console.aws.amazon.com/cloudfront/v4/home#/distributions/E2YJH7CFDMIHN1) |
+| 2 | EC2 | [instances (Sydney)](https://ap-southeast-2.console.aws.amazon.com/ec2/home?region=ap-southeast-2#Instances:) |
+| 3 | S3 | [orvyn-artifacts-367722595624](https://ap-southeast-2.console.aws.amazon.com/s3/buckets/orvyn-artifacts-367722595624?region=ap-southeast-2&tab=objects) |
+| 4 | KMS | [keys → alias/orvyn-pack-signer](https://ap-southeast-2.console.aws.amazon.com/kms/home?region=ap-southeast-2#/kms/keys) |
+| 5 | DynamoDB | [orvyn-scan-events → Explore items](https://ap-southeast-2.console.aws.amazon.com/dynamodbv2/home?region=ap-southeast-2#table?name=orvyn-scan-events) |
+| 6 | Lambda | [orvyn-ledger-integrity](https://ap-southeast-2.console.aws.amazon.com/lambda/home?region=ap-southeast-2#/functions/orvyn-ledger-integrity) |
+| 7 | EventBridge | [orvyn-nightly-integrity](https://ap-southeast-2.console.aws.amazon.com/events/home?region=ap-southeast-2#/rule/orvyn-nightly-integrity) |
+| 8 | CloudWatch dashboard | [ORVYN-Demo](https://ap-southeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-southeast-2#dashboards:name=ORVYN-Demo) |
+| 9 | CloudWatch alarm | [ORVYN-CounterfeitDetected](https://ap-southeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-southeast-2#alarmsV2:alarm/ORVYN-CounterfeitDetected) |
+| 10 | SNS | [orvyn-alerts topic](https://ap-southeast-2.console.aws.amazon.com/sns/v3/home?region=ap-southeast-2#/topics) |
+| 11 | Secrets Manager | [list secrets](https://ap-southeast-2.console.aws.amazon.com/secretsmanager/listsecrets?region=ap-southeast-2) |
+| 12 | IAM | [orvyn-ec2-role](https://console.aws.amazon.com/iam/home#/roles/details/orvyn-ec2-role) |
+| 13 | CloudTrail | [event history](https://ap-southeast-2.console.aws.amazon.com/cloudtrail/home?region=ap-southeast-2#/events) |
+| 14 | Live app | [d1bxeh2lzuam2u.cloudfront.net](https://d1bxeh2lzuam2u.cloudfront.net) |
+
+> If a console link opens the *old* console or the wrong project, use the search bar at the top of the console and type the service name (`S3`, `DynamoDB`, `Lambda`, …). The resource names below are exact.
+
+---
+
 ## The 8-minute order
 
 Open these in sequence. Each row: what to click, what to point at, what to say.
