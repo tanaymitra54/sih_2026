@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedGuard — AWS Cloud Architecture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0e0c;
+      --surface: #121a16;
+      --card: #17211c;
+      --ink: #e8f0ea;
+      --muted: #8fa399;
+      --dim: #5c6f64;
+      --green: #3dd68c;
+      --green-dim: rgba(61, 214, 140, 0.14);
+      --line: #24302a;
+      --amber: #e8b84a;
+      --red: #e86a6a;
+      --blue: #6bb3ff;
+      --font: "IBM Plex Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: var(--font); }
+    body { overflow: hidden; }
+
+    .deck {
+      position: relative;
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+      margin: auto;
+      inset: 0;
+      position: absolute;
+      background: var(--bg);
+      overflow: hidden;
+    }
+    .deck::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(61,214,140,0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      padding: clamp(28px, 4.5vh, 48px) clamp(36px, 5vw, 64px) 56px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(10px);
+      transition: opacity 0.45s var(--ease), transform 0.45s var(--ease), visibility 0.45s;
+      display: flex;
+      flex-direction: column;
+      z-index: 1;
+    }
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      z-index: 2;
+    }
+
+    .kicker {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: clamp(28px, 4.2vw, 46px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+    h2 {
+      font-size: clamp(22px, 2.8vw, 32px);
+      font-weight: 650;
+      letter-spacing: -0.025em;
+      margin-bottom: 18px;
+    }
+    h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    p, li { color: var(--muted); font-size: clamp(13px, 1.35vw, 16px); line-height: 1.55; }
+    .lede { max-width: 52ch; color: var(--muted); font-size: clamp(14px, 1.5vw, 18px); line-height: 1.6; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1; min-height: 0; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .card strong { color: var(--ink); display: block; margin-bottom: 6px; font-size: 14px; }
+    .card p, .card li { font-size: 13px; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--green-dim);
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .metric {
+      text-align: left;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+    }
+    .metric .n {
+      font-family: var(--mono);
+      font-size: clamp(28px, 3.5vw, 40px);
+      color: var(--green);
+      font-weight: 600;
+      letter-spacing: -0.04em;
+    }
+    .metric .l { font-size: 12px; color: var(--dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    table.compare {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    table.compare th, table.compare td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    table.compare th { color: var(--dim); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+    table.compare td { color: var(--muted); }
+    table.compare td:first-child { color: var(--ink); font-weight: 500; }
+    .tag-yes { color: var(--green); font-family: var(--mono); font-size: 11px; }
+    .tag-no { color: var(--dim); font-family: var(--mono); font-size: 11px; }
+
+    .mermaid {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 16px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .mermaid svg { max-height: 100%; max-width: 100%; }
+
+    .title-slide { justify-content: center; }
+    .title-slide .brand {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--green);
+      letter-spacing: 0.2em;
+      margin-bottom: 18px;
+    }
+    .title-slide h1 { font-size: clamp(36px, 5vw, 56px); margin-bottom: 14px; }
+    .team {
+      margin-top: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .team span { border: 1px solid var(--line); padding: 6px 12px; border-radius: 8px; background: var(--surface); }
+    .team b { color: var(--ink); font-weight: 500; }
+
+    .nav {
+      position: absolute;
+      bottom: 14px;
+      left: 0; right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      z-index: 10;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--dim);
+    }
+    .nav button {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .nav button:hover { border-color: var(--green); color: var(--green); }
+    .progress {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      background: var(--green);
+      transition: width 0.35s var(--ease);
+      z-index: 11;
+    }
+
+    .slide.active .rise { animation: rise 0.55s var(--ease) both; }
+    .slide.active .rise:nth-child(2) { animation-delay: 0.06s; }
+    .slide.active .rise:nth-child(3) { animation-delay: 0.12s; }
+    .slide.active .rise:nth-child(4) { animation-delay: 0.18s; }
+    .slide.active .rise:nth-child(5) { animation-delay: 0.24s; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    ul.clean { list-style: none; display: grid; gap: 8px; }
+    ul.clean li::before { content: "▸ "; color: var(--green); font-family: var(--mono); }
+
+    .two-col-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
+    .svc {
+      border-left: 2px solid var(--green);
+      padding-left: 12px;
+    }
+    .svc code { font-family: var(--mono); color: var(--green); font-size: 12px; }
+    .svc p { font-size: 12px; margin-top: 2px; }
+
+    .footnote {
+      margin-top: auto;
+      padding-top: 12px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim);
+    }
+
+    @media (max-width: 900px) {
+      .grid-2, .grid-3, .grid-4, .two-col-list { grid-template-columns: 1fr; }
+      .slide { padding: 24px 20px 52px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck" id="deck">
+    <div class="progress" id="progress"></div>
+
+    <!-- 1 Title -->
+    <section class="slide title-slide active" data-slide="0">
+      <div class="brand rise">MEDGUARD · AWS CLOUD ARCHITECTURE</div>
+      <h1 class="rise">Counterfeit medicine detection,<br/>built for the cloud.</h1>
+      <p class="lede rise">Signed pack identities · tamper-evident custody ledger · behavioral clone detection — designed to run on AWS at production scale.</p>
+      <div class="team rise">
+        <span><b>Tanay Mitra</b> · 24BCE1287</span>
+        <span><b>Rishav Kumar</b></span>
+        <span><b>Aditya Arora</b></span>
+      </div>
+    </section>
+
+    <!-- 2 Problem -->
+    <section class="slide" data-slide="1">
+      <div class="kicker rise">01 · Problem</div>
+      <h2 class="rise">Fake medicine is a supply-chain failure.</h2>
+      <div class="grid-3 rise" style="margin-top:8px">
+        <div class="metric"><div class="n">~1M</div><div class="l">deaths / year (WHO est.)</div></div>
+        <div class="metric"><div class="n">Editable</div><div class="l">centralized barcode DBs</div></div>
+        <div class="metric"><div class="n">Copyable</div><div class="l">static QR stickers</div></div>
+      </div>
+      <div class="grid-2" style="margin-top:16px">
+        <div class="card rise">
+          <strong>What patients face</strong>
+          <p>At the pharmacy counter, look-alike packaging and paperwork give no cryptographic proof that a pack is real.</p>
+        </div>
+        <div class="card rise">
+          <strong>Where systems fail</strong>
+          <p>Verification often asks only “does this code exist?” — not whether the signature, journey, and behaviour make sense.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 Gaps -->
+    <section class="slide" data-slide="2">
+      <div class="kicker rise">02 · Gaps today</div>
+      <h2 class="rise">Existing tracking leaves dangerous holes.</h2>
+      <div class="grid-2">
+        <ul class="clean rise">
+          <li>Central DBs can be quietly edited</li>
+          <li>Static QRs can be photocopied at scale</li>
+          <li>“Exists” checks ignore custody history</li>
+          <li>No enforced factory → distributor → pharmacy order</li>
+        </ul>
+        <ul class="clean rise">
+          <li>Cloned genuine serials go undetected</li>
+          <li>Consumers rarely get a free verify path</li>
+          <li>Alerts are manual, late, or missing</li>
+          <li>Keys and audit logs lack cloud-grade controls</li>
+        </ul>
+      </div>
+      <p class="footnote rise">MedGuard attacks the last mile: make a fake hard to mint, hard to move, and hard to sell.</p>
+    </section>
+
+    <!-- 4 Market exists -->
+    <section class="slide" data-slide="3">
+      <div class="kicker rise">03 · What already exists</div>
+      <h2 class="rise">Track-and-trace is not new — trust still is.</h2>
+      <table class="compare rise">
+        <thead>
+          <tr><th>Approach</th><th>What it does</th><th>Limit</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Barcode / GS1 systems</td><td>Inventory &amp; logistics IDs</td><td>Central records can be altered</td></tr>
+          <tr><td>Static QR + portal</td><td>Lookup serial in a database</td><td>Sticker clones still “valid”</td></tr>
+          <tr><td>Serialization mandates</td><td>Unique IDs per pack</td><td>ID alone ≠ authenticity proof</td></tr>
+          <tr><td>Permissioned blockchain pilots</td><td>Shared ledger among firms</td><td>Heavy ops; weak consumer UX</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 5 Uniqueness -->
+    <section class="slide" data-slide="4">
+      <div class="kicker rise">04 · Uniqueness</div>
+      <h2 class="rise">What MedGuard adds beyond “track &amp; trace”.</h2>
+      <div class="grid-2">
+        <div class="card rise"><strong>Cryptographic pack identity</strong><p>Ed25519 / signed QR — copies fail signature checks.</p></div>
+        <div class="card rise"><strong>Dual hash-chain ledger</strong><p>Global + per-product pointers; tamper is evident.</p></div>
+        <div class="card rise"><strong>Order-enforcing state machine</strong><p>CREATED → DISTRIBUTED → AT_PHARMACY → SOLD.</p></div>
+        <div class="card rise"><strong>Behavioral clone detection</strong><p>After-sold scans, route mismatch, scan floods.</p></div>
+      </div>
+      <p class="footnote rise">Public consumer verify — no app install required for the end user.</p>
+    </section>
+
+    <!-- 6 Solution overview -->
+    <section class="slide" data-slide="5">
+      <div class="kicker rise">05 · Solution</div>
+      <h2 class="rise">Three trust layers on every scan.</h2>
+      <div class="grid-3 rise">
+        <div class="card"><strong>1 · Identity</strong><p>Was this pack minted? Does the signature verify?</p></div>
+        <div class="card"><strong>2 · History</strong><p>Is the custody chain intact and in valid order?</p></div>
+        <div class="card"><strong>3 · Behaviour</strong><p>Do location, timing, and scan volume look real?</p></div>
+      </div>
+      <div class="card rise" style="margin-top:14px">
+        <strong>One-line product thesis</strong>
+        <p>A medicine is not genuine because a QR exists — it is genuine when identity, history, and behaviour all agree.</p>
+      </div>
+    </section>
+
+    <!-- 7 E2E flow -->
+    <section class="slide" data-slide="6">
+      <div class="kicker rise">06 · End-to-end flow</div>
+      <h2 class="rise">From mint to patient verify.</h2>
+      <div class="mermaid rise">
+flowchart LR
+  M[Manufacturer] -->|mint request| A[Admin approve]
+  A -->|signed QR + MINT| D[Distributor]
+  D -->|RECEIVE| P[Pharmacist]
+  P -->|VERIFY / SELL| C[Consumer]
+  C -->|scan + BUY| L[(Hash-chained ledger)]
+  M --> L
+  D --> L
+  P --> L
+      </div>
+    </section>
+
+    <!-- 8 Signed QR -->
+    <section class="slide" data-slide="7">
+      <div class="kicker rise">07 · Cryptographic identity</div>
+      <h2 class="rise">Signed QR — fingerprint, not a name tag.</h2>
+      <div class="grid-2">
+        <div class="card rise">
+          <strong>Payload</strong>
+          <p style="font-family:var(--mono);color:var(--green);font-size:13px;margin-top:8px">MEDG:&lt;serial&gt;:&lt;sig&gt;:&lt;batch&gt;</p>
+          <p style="margin-top:10px">Signature over <code style="color:var(--ink)">serial|batch</code>. Only the manufacturer key can mint valid packs.</p>
+        </div>
+        <div class="card rise">
+          <strong>Why clones fail</strong>
+          <ul class="clean" style="margin-top:8px">
+            <li>Photocopy keeps the same sticker text</li>
+            <li>Without the private key, new packs cannot be forged</li>
+            <li>Verify endpoint rejects bad signatures</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9 Ledger -->
+    <section class="slide" data-slide="8">
+      <div class="kicker rise">08 · Ledger</div>
+      <h2 class="rise">Append-only blocks with two previous hashes.</h2>
+      <div class="mermaid rise">
+flowchart TB
+  B1[Block n-1] -->|prevHash| B2[Block n]
+  P1[Product tip] -->|productPrevHash| B2
+  B2 -->|sha256 fields| H[blockHash]
+      </div>
+      <p class="footnote rise">Edit one row → global chain and product journey both break.</p>
+    </section>
+
+    <!-- 10 State machine -->
+    <section class="slide" data-slide="9">
+      <div class="kicker rise">09 · State machine</div>
+      <h2 class="rise">Packs cannot skip legitimate nodes.</h2>
+      <div class="mermaid rise">
+stateDiagram-v2
+  [*] --> CREATED: MINT
+  CREATED --> DISTRIBUTED: distributor RECEIVE
+  DISTRIBUTED --> AT_PHARMACY: pharmacist RECEIVE
+  AT_PHARMACY --> SOLD: SELL / BUY
+      </div>
+    </section>
+
+    <!-- 11 Verify rules -->
+    <section class="slide" data-slide="10">
+      <div class="kicker rise">10 · Verification</div>
+      <h2 class="rise">First failing check wins.</h2>
+      <table class="compare rise">
+        <thead><tr><th>Check</th><th>Fails when</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>Parse / mint</td><td>Bad QR or unknown serial</td><td><span class="tag-no">COUNTERFEIT</span></td></tr>
+          <tr><td>Signature</td><td>Sig does not verify</td><td><span class="tag-no">COUNTERFEIT</span></td></tr>
+          <tr><td>Chain integrity</td><td>Hash or link broken</td><td><span class="tag-no">COUNTERFEIT</span></td></tr>
+          <tr><td>After sold / flood / route</td><td>Impossible behaviour</td><td><span style="color:var(--amber);font-family:var(--mono);font-size:11px">SUSPICIOUS</span></td></tr>
+          <tr><td>Else</td><td>—</td><td><span class="tag-yes">GENUINE</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 12 Behaviour -->
+    <section class="slide" data-slide="11">
+      <div class="kicker rise">11 · Clone detection</div>
+      <h2 class="rise">Even a perfect sticker copy leaves a trail.</h2>
+      <div class="grid-4 rise">
+        <div class="card"><strong>After sold</strong><p>Same serial used twice</p></div>
+        <div class="card"><strong>Route mismatch</strong><p>Scan outside declared path</p></div>
+        <div class="card"><strong>Scan flood</strong><p>Many copies in the wild</p></div>
+        <div class="card"><strong>Missing handoff</strong><p>Skipped mandatory node</p></div>
+      </div>
+      <p class="footnote rise">Alerts fire automatically into an ops feed — no human in the loop for first detection.</p>
+    </section>
+
+    <!-- 13 Roles -->
+    <section class="slide" data-slide="12">
+      <div class="kicker rise">12 · Roles</div>
+      <h2 class="rise">One system, five workspaces.</h2>
+      <div class="grid-3 rise">
+        <div class="card"><strong>Manufacturer</strong><p>Request mint · recall · QR grid</p></div>
+        <div class="card"><strong>Admin</strong><p>Approve / reject before QRs exist</p></div>
+        <div class="card"><strong>Distributor</strong><p>Scan receive · custody transfer</p></div>
+        <div class="card"><strong>Pharmacist</strong><p>Stock · verify · sell</p></div>
+        <div class="card"><strong>Consumer</strong><p>Public verify · buy · journey</p></div>
+        <div class="card"><strong>Alerts</strong><p>Shared anomaly console</p></div>
+      </div>
+    </section>
+
+    <!-- 14 Why AWS -->
+    <section class="slide" data-slide="13">
+      <div class="kicker rise">13 · Why AWS</div>
+      <h2 class="rise">Local demo proves the idea. AWS makes it durable.</h2>
+      <div class="grid-2">
+        <div class="card rise">
+          <strong>Today (lab)</strong>
+          <ul class="clean" style="margin-top:8px">
+            <li>Node / Express + SQLite</li>
+            <li>Vite React SPA</li>
+            <li>Keys on local disk</li>
+            <li>Single-machine demo</li>
+          </ul>
+        </div>
+        <div class="card rise">
+          <strong>Why move to AWS</strong>
+          <ul class="clean" style="margin-top:8px">
+            <li>Managed scale &amp; multi-AZ</li>
+            <li>KMS for signing secrets</li>
+            <li>Global CDN for verify UX</li>
+            <li>Observability + WAF + IAM</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 15 AWS architecture -->
+    <section class="slide" data-slide="14">
+      <div class="kicker rise">14 · Target architecture · planned</div>
+      <h2 class="rise">MedGuard on AWS.</h2>
+      <div class="mermaid rise">
+flowchart TB
+  U[Users / Phones] --> CF[CloudFront]
+  CF --> AMP[Amplify Hosting · SPA]
+  U --> APIGW[API Gateway]
+  APIGW --> ECS[App Runner / ECS Fargate · API]
+  ECS --> RDS[(RDS PostgreSQL)]
+  ECS --> REDIS[(ElastiCache Redis)]
+  ECS --> S3[(S3 · assets)]
+  ECS --> KMS[KMS · signing keys]
+  ECS --> COG[Cognito]
+  ECS --> CW[CloudWatch]
+  ECS --> SNS[SNS / SES · alerts]
+  WAF[WAF] --> APIGW
+  WAF --> CF
+      </div>
+    </section>
+
+    <!-- 16 Services table -->
+    <section class="slide" data-slide="15">
+      <div class="kicker rise">15 · AWS services we will use</div>
+      <h2 class="rise">Mapped to MedGuard workloads.</h2>
+      <div class="two-col-list rise">
+        <div class="svc"><code>Amazon CloudFront + Amplify</code><p>SPA delivery, TLS, edge cache for verify UI</p></div>
+        <div class="svc"><code>API Gateway</code><p>HTTP API, throttling, JWT authorizers</p></div>
+        <div class="svc"><code>App Runner / ECS Fargate</code><p>Containerized Express API, autoscaling</p></div>
+        <div class="svc"><code>Amazon RDS (PostgreSQL)</code><p>Replace SQLite; Multi-AZ, backups</p></div>
+        <div class="svc"><code>ElastiCache (Redis)</code><p>Rate limits, hot serial / flood windows</p></div>
+        <div class="svc"><code>Amazon S3</code><p>QR exports, static assets, audit dumps</p></div>
+        <div class="svc"><code>AWS KMS</code><p>Manufacturer signing keys, envelope crypto</p></div>
+        <div class="svc"><code>Amazon Cognito</code><p>Role users: mfr, admin, dist, pharma</p></div>
+        <div class="svc"><code>AWS WAF</code><p>Protect verify &amp; login from abuse</p></div>
+        <div class="svc"><code>CloudWatch + X-Ray</code><p>Logs, metrics, traces for custody APIs</p></div>
+        <div class="svc"><code>SNS / SES</code><p>Recall &amp; SUSPICIOUS alerts</p></div>
+        <div class="svc"><code>IAM + Secrets Manager</code><p>Least privilege, no keys in code</p></div>
+      </div>
+    </section>
+
+    <!-- 17 Security -->
+    <section class="slide" data-slide="16">
+      <div class="kicker rise">16 · Security on AWS</div>
+      <h2 class="rise">Trust the chain — protect the keys.</h2>
+      <div class="grid-3 rise">
+        <div class="card"><strong>KMS</strong><p>Private signing material never leaves HSM-backed keys; API signs via grants.</p></div>
+        <div class="card"><strong>Cognito + IAM</strong><p>Role claims map to manufacturer / admin / distributor / pharmacist.</p></div>
+        <div class="card"><strong>WAF + API GW</strong><p>Throttle public verify; block floods that mimic clone attacks.</p></div>
+      </div>
+      <div class="card rise" style="margin-top:14px">
+        <strong>Well-Architected · Security</strong>
+        <p>Encryption in transit (TLS) and at rest (RDS / S3 / KMS). Separate accounts for prod. Audit with CloudTrail.</p>
+      </div>
+    </section>
+
+    <!-- 18 Data & scale -->
+    <section class="slide" data-slide="17">
+      <div class="kicker rise">17 · Data &amp; scale</div>
+      <h2 class="rise">From one SQLite file to Multi-AZ data plane.</h2>
+      <div class="grid-2">
+        <div class="card rise">
+          <strong>RDS PostgreSQL</strong>
+          <ul class="clean" style="margin-top:8px">
+            <li>Products, batches, custody blocks</li>
+            <li>Point-in-time recovery</li>
+            <li>Read replica for verify-heavy load</li>
+          </ul>
+        </div>
+        <div class="card rise">
+          <strong>ElastiCache + S3</strong>
+          <ul class="clean" style="margin-top:8px">
+            <li>Sliding windows for scan-flood rules</li>
+            <li>Session / rate-limit counters</li>
+            <li>S3 for QR PDF/PNG batch exports</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 19 Ops -->
+    <section class="slide" data-slide="18">
+      <div class="kicker rise">18 · Ops &amp; alerts</div>
+      <h2 class="rise">Detect → notify → act.</h2>
+      <div class="mermaid rise">
+sequenceDiagram
+  participant V as Verify API
+  participant CW as CloudWatch
+  participant SNS as SNS
+  participant Ops as Ops / Manufacturer
+  V->>CW: metrics + anomaly logs
+  CW-->>SNS: alarm SUSPICIOUS / flood
+  SNS-->>Ops: email / SMS
+      </div>
+    </section>
+
+    <!-- 20 Advancements -->
+    <section class="slide" data-slide="19">
+      <div class="kicker rise">19 · Advancements</div>
+      <h2 class="rise">What we bring to the problem space.</h2>
+      <div class="grid-2 rise">
+        <div class="card"><strong>Product</strong><p>Signature + ledger + behaviour in one verify path. Admin-gated minting. Consumer-grade public check.</p></div>
+        <div class="card"><strong>Engineering</strong><p>Storage-agnostic ledger interface. Ready to swap SQLite → RDS and local keys → KMS without rewriting domain logic.</p></div>
+        <div class="card"><strong>Cloud</strong><p>Target architecture uses managed AWS primitives for scale, key custody, edge delivery, and alerting.</p></div>
+        <div class="card"><strong>Ops model</strong><p>Automatic alerts instead of after-the-fact audits alone.</p></div>
+      </div>
+    </section>
+
+    <!-- 21 Roadmap -->
+    <section class="slide" data-slide="20">
+      <div class="kicker rise">20 · Roadmap</div>
+      <h2 class="rise">Today → AWS → future.</h2>
+      <div class="mermaid rise">
+flowchart LR
+  T[Today · local demo] --> P1[Phase 1 · Amplify + App Runner + RDS]
+  P1 --> P2[Phase 2 · KMS + Cognito + WAF]
+  P2 --> P3[Phase 3 · Redis floods + SNS recalls]
+  P3 --> F[Future · permissioned chain / Bedrock assist]
+      </div>
+      <p class="footnote rise">All AWS stages above are planned production targets — labeled as roadmap, not current runtime.</p>
+    </section>
+
+    <!-- 22 Close -->
+    <section class="slide title-slide" data-slide="21">
+      <div class="brand rise">MEDGUARD</div>
+      <h1 class="rise">Make the fake fail<br/>before it reaches a patient.</h1>
+      <p class="lede rise">Identity · history · behaviour — verified at the counter, scaled on AWS.</p>
+      <div class="team rise">
+        <span><b>Tanay Mitra</b> · 24BCE1287</span>
+        <span><b>Rishav Kumar</b></span>
+        <span><b>Aditya Arora</b></span>
+      </div>
+      <p class="footnote rise" style="text-align:center;width:100%">← → or click · F for fullscreen</p>
+    </section>
+
+    <div class="nav">
+      <button type="button" id="prev">← Prev</button>
+      <span id="counter">1 / 22</span>
+      <button type="button" id="next">Next →</button>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "dark",
+      themeVariables: {
+        primaryColor: "#17211c",
+        primaryTextColor: "#e8f0ea",
+        primaryBorderColor: "#3dd68c",
+        lineColor: "#8fa399",
+        secondaryColor: "#121a16",
+        tertiaryColor: "#0a0e0c",
+        fontFamily: "IBM Plex Sans"
+      },
+      flowchart: { curve: "basis", htmlLabels: true },
+      securityLevel: "loose"
+    });
+
+    const slides = [...document.querySelectorAll(".slide")];
+    let i = 0;
+
+    async function renderMermaid(slide) {
+      const nodes = slide.querySelectorAll(".mermaid:not([data-processed])");
+      for (const node of nodes) {
+        const id = "mmd-" + Math.random().toString(36).slice(2);
+        const src = node.textContent.trim();
+        try {
+          const { svg } = await mermaid.render(id, src);
+          node.innerHTML = svg;
+          node.setAttribute("data-processed", "1");
+        } catch (e) {
+          node.textContent = "Diagram error";
+          console.warn(e);
+        }
+      }
+    }
+
+    async function show(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+      document.getElementById("counter").textContent = (i + 1) + " / " + slides.length;
+      document.getElementById("progress").style.width = ((i + 1) / slides.length * 100) + "%";
+      await renderMermaid(slides[i]);
+    }
+
+    document.getElementById("prev").onclick = () => show(i - 1);
+    document.getElementById("next").onclick = () => show(i + 1);
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); show(i + 1); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); show(i - 1); }
+      if (e.key === "f" || e.key === "F") {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      }
+    });
+
+    show(0);
+  </script>
+</body>
+</html>

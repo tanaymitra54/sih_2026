@@ -26,8 +26,12 @@ export function Distributor() {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   async function load() {
-    const { data } = await api.get("/custody/products");
-    setProducts(data);
+    try {
+      const { data } = await api.get("/custody/products");
+      setProducts(data);
+    } catch {
+      /* 401 / network — handled by guard */
+    }
   }
   useEffect(() => { load(); }, []);
 

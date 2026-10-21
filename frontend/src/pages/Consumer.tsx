@@ -107,6 +107,29 @@ export function Consumer() {
         </div>
       )}
 
+      {result?.risk && (
+        <div className="group">
+          <div className="group-title">AI Risk Intelligence · RL bandit</div>
+          <div className="row">
+            <div className="row-main">
+              <div className="row-title">Risk {result.risk.score}/100 · {result.risk.level}</div>
+              <div className="row-sub">policy {["sensitive", "balanced", "strict"][result.risk.action]} (threshold {result.risk.threshold}) · state {["low", "medium", "high"][result.risk.state]}</div>
+              {result.risk.reasons.length > 0 && (
+                <div className="chips" style={{ marginTop: 6 }}>
+                  {result.risk.reasons.map((r) => <span key={r} className="chip warn">{r}</span>)}
+                </div>
+              )}
+            </div>
+            <span className={`badge ${result.risk.level === "high" ? "COUNTERFEIT" : result.risk.level === "medium" ? "SUSPICIOUS" : "GENUINE"}`}>{result.risk.level}</span>
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-ghost small" onClick={async () => { await api.post("/verify/feedback", { serial: result.product!.serial, correct: true }); toast.success("Feedback saved — RL reward +1"); }}>Correct</button>
+            <button className="btn btn-ghost small" onClick={async () => { await api.post("/verify/feedback", { serial: result.product!.serial, correct: false }); toast.success("Feedback saved — RL reward -1"); }}>False alarm</button>
+            <span className="muted" style={{ marginLeft: "auto", fontSize: 11 }}>trains the bandit live</span>
+          </div>
+        </div>
+      )}
+
       {result && result.product && (
         <div className="group">
           <div className="group-title">{t("consumer.pack")}</div>

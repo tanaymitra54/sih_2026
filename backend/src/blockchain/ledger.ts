@@ -1,5 +1,6 @@
 import { db } from "../config.js";
 import { GENESIS_HASH, hashBlock, productChainValid, type Block, type BlockInput } from "./ledger-core.js";
+import { snapshotLedger } from "../aws/orvyn-aws.js";
 
 export const ACTIONS = { MINT: "MINT", RECEIVE: "RECEIVE", VERIFY: "VERIFY", SELL: "SELL", BUY: "BUY", RECALL: "RECALL" } as const;
 
@@ -58,6 +59,8 @@ export async function appendBlock(input: Omit<BlockInput, "index" | "prevHash" |
       timestamp: block.timestamp,
     },
   });
+  // Push a fresh chain snapshot to S3 for the Lambda integrity checker (throttled).
+  void snapshotLedger();
   return block;
 }
 

@@ -25,6 +25,10 @@ export interface AlertLike {
 
 const CRITICAL_ALERT_TYPES = new Set(["unminted_serial", "bad_signature", "unparseable_qr", "batch_recalled"]);
 
+/** Alert/recall inbox — primary from env + fixed secondary recipient. */
+const ALERT_RECIPIENTS = [...new Set([ALERT_EMAIL, "amishi.dubey2024@vitstudent.ac.in"])];
+const ALERT_TO = ALERT_RECIPIENTS.join(", ");
+
 const ALERT_THROTTLE_MS = 10 * 60 * 1000;
 const recentAlertSends = new Map<string, number>();
 
@@ -63,7 +67,7 @@ export async function notifyRecall(batch: BatchLike): Promise<RecallNotification
   ].join("\n");
 
   if (!smtpConfigured()) {
-    const preview = { to: ALERT_EMAIL, channel: "email" as const, status: "preview" as const, subject, body, intendedRecipients };
+    const preview = { to: ALERT_TO, channel: "email" as const, status: "preview" as const, subject, body, intendedRecipients };
     console.log("[notify] SMTP not configured; recall email preview:", JSON.stringify(preview, null, 2));
     return [preview];
   }
@@ -71,21 +75,21 @@ export async function notifyRecall(batch: BatchLike): Promise<RecallNotification
   try {
     await getTransporter().sendMail({
       from: `ORVYN alerts <${SMTP_USER}>`,
-      to: ALERT_EMAIL,
+      to: ALERT_TO,
       subject,
-      text: `${body}\n\nMock delivery recipient: ${ALERT_EMAIL}\n\nIntended stakeholders:\n${intendedRecipients.join("\n") || "None"}`,
+      text: `${body}\n\nRecipients: ${ALERT_TO}\n\nIntended stakeholders:\n${intendedRecipients.join("\n") || "None"}`,
       html: emailHtml(batch, intendedRecipients),
     });
-    return [{ to: ALERT_EMAIL, channel: "email", status: "sent", subject, body, intendedRecipients }];
+    return [{ to: ALERT_TO, channel: "email", status: "sent", subject, body, intendedRecipients }];
   } catch (error) {
     const message = error instanceof Error ? error.message : "SMTP delivery failed";
-    console.error(`[notify] recall email failed for ${ALERT_EMAIL}:`, message);
-    return [{ to: ALERT_EMAIL, channel: "email", status: "failed", subject, body, intendedRecipients, error: message }];
+    console.error(`[notify] recall email failed for ${ALERT_TO}:`, message);
+    return [{ to: ALERT_TO, channel: "email", status: "failed", subject, body, intendedRecipients, error: message }];
   }
 }
 
 /**
- * Emails one alert to the admin inbox (ALERT_EMAIL). Never throws.
+ * Emails one alert to the recipients in ALERT_TO. Never throws.
  * Throttled per productId+type so repeated scans of the same fake pack
  * don't flood the inbox (the DB alert row is still always saved).
  */
@@ -105,14 +109,14 @@ export async function notifyAlert(alert: AlertLike): Promise<void> {
   ].join("\n");
 
   if (!smtpConfigured()) {
-    console.log(`[notify] SMTP not configured; alert email preview for ${ALERT_EMAIL}:\nsubject: ${subject}\n${body}`);
+    console.log(`[notify] SMTP not configured; alert email preview for ${ALERT_TO}:\nsubject: ${subject}\n${body}`);
     return;
   }
 
   try {
     await getTransporter().sendMail({
       from: `ORVYN alerts <${SMTP_USER}>`,
-      to: ALERT_EMAIL,
+      to: ALERT_TO,
       subject,
       text: body,
       html: alertEmailHtml(alert, critical),
@@ -120,7 +124,7 @@ export async function notifyAlert(alert: AlertLike): Promise<void> {
     recentAlertSends.set(key, Date.now());
     pruneThrottleMap();
   } catch (error) {
-    console.error(`[notify] alert email failed for ${ALERT_EMAIL}:`, error instanceof Error ? error.message : error);
+    console.error(`[notify] alert email failed for ${ALERT_TO}:`, error instanceof Error ? error.message : error);
   }
 }
 
@@ -169,7 +173,7 @@ function alertEmailHtml(alert: AlertLike, critical: boolean) {
         <table style="margin:22px 0;border-collapse:collapse;width:100%">
           ${rows.map(([k, v]) => `<tr><td style="padding:9px 0;color:#63716c;vertical-align:top;width:130px">${escapeHtml(k)}</td><td style="padding:9px 0;font-weight:600">${escapeHtml(v)}</td></tr>`).join("")}
         </table>
-        <p style="color:#63716c;font-size:12px">Automated ORVYN alert · delivered to ${escapeHtml(ALERT_EMAIL)} · mock delivery via ${escapeHtml(RECALL_MOCK_EMAIL)}</p>
+        <p style="color:#63716c;font-size:12px">Automated ORVYN alert · delivered to ${escapeHtml(ALERT_TO)} · mock delivery via ${escapeHtml(RECALL_MOCK_EMAIL)}</p>
       </div>
     </div>`;
 }

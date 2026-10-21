@@ -5,12 +5,15 @@ import { missingHandoffs } from "../blockchain/ledger-core.js";
 import { verifySignature, parseQr } from "../utils/qr.js";
 import { nearestCity } from "../utils/geo.js";
 import { notifyAlert } from "./notify.js";
+import { assessRisk } from "./riskEngine.js";
+import { recordScan, publishAlert } from "../aws/orvyn-aws.js";
 
 export interface VerifyResult {
   verdict: "GENUINE" | "SUSPICIOUS" | "COUNTERFEIT";
   flags: string[];
   product: { serial: string; name: string; batchCode: string; state: string } | null;
   journey: { action: string; signer: string; payload: Record<string, unknown>; timestamp: number }[];
+  risk?: { score: number; level: "low" | "medium" | "high"; reasons: string[]; state: number; action: number; threshold: number };
 }
 
 function locationsMatch(route: string, scanLoc?: string | null): boolean {
@@ -28,6 +31,7 @@ export async function verifyProduct(
   qrText: string,
   scan: { location?: string; lat?: number; lng?: number },
 ): Promise<VerifyResult> {
+  const startedAt = Date.now();
   // Consumer scans carry GPS coords; pharmacist scans may carry a text location.
   // Resolve coords → nearest metro so every alert feeds the heatmap.
   const alertLoc =
@@ -37,6 +41,7 @@ export async function verifyProduct(
   const qr = parseQr(qrText);
   if (!qr) {
     await createAlert(null, "unparseable_qr", `Unparseable QR scanned: "${qrText.slice(0, 80)}"`, alertLoc);
+    void recordScan({ serial: "unparseable", verdict: "COUNTERFEIT", flags: ["unparseable_qr"], location: alertLoc ?? null, lat: scan.lat ?? null, lng: scan.lng ?? null, latencyMs: Date.now() - startedAt });
     return { verdict: "COUNTERFEIT", flags: ["unparseable_qr"], product: null, journey: [] };
   }
 
@@ -47,6 +52,7 @@ export async function verifyProduct(
 
   if (!product) {
     await createAlert(null, "unminted_serial", `Serial ${qr.serial} was never minted.`, alertLoc);
+    void recordScan({ serial: qr.serial, verdict: "COUNTERFEIT", flags: ["not_minted"], location: alertLoc ?? null, lat: scan.lat ?? null, lng: scan.lng ?? null, latencyMs: Date.now() - startedAt });
     return { verdict: "COUNTERFEIT", flags: ["not_minted"], product: null, journey: [] };
   }
 
@@ -97,6 +103,29 @@ export async function verifyProduct(
     await createAlert(product.id, "scan_flood", `${product.serial} scanned ${scanCount + 1} times — many copies in circulation.`, alertLoc);
   }
 
+  // ── RL risk engine (ML anomaly scoring + contextual bandit) ─────────────
+  // Runs in addition to the rule-based flags above — merges ml flags into the same verdict path.
+  let risk: { score: number; level: "low" | "medium" | "high"; reasons: string[]; state: number; action: number; threshold: number } | undefined;
+  try {
+    const assessment = await assessRisk(product.id, { lat: scan.lat, lng: scan.lng }, product.state, missing.length);
+    risk = {
+      score: assessment.riskScore,
+      level: assessment.rawScore < 0.33 ? "low" : assessment.rawScore < 0.66 ? "medium" : "high",
+      reasons: assessment.reasons,
+      state: assessment.state,
+      action: assessment.action,
+      threshold: assessment.threshold,
+    };
+    for (const f of assessment.mlFlags) {
+      if (!flags.includes(f)) {
+        flags.push(f);
+        await createAlert(product.id, f, `${product.serial}: ${f} — ${assessment.reasons.join("; ")}`, alertLoc);
+      }
+    }
+  } catch (e) {
+    console.error("[verify] risk engine error:", e);
+  }
+
   await db.scanEvent.create({
     data: { productId: product.id, location: scan.location ?? null, lat: scan.lat ?? null, lng: scan.lng ?? null },
   });
@@ -116,6 +145,17 @@ export async function verifyProduct(
       ? "SUSPICIOUS"
       : "GENUINE";
 
+  // Mirror to AWS (DynamoDB scan log + CloudWatch metrics). Fire-and-forget.
+  void recordScan({
+    serial: product.serial,
+    verdict,
+    flags,
+    location: alertLoc ?? null,
+    lat: scan.lat ?? null,
+    lng: scan.lng ?? null,
+    latencyMs: Date.now() - startedAt,
+  });
+
   return {
     verdict,
     flags,
@@ -126,11 +166,13 @@ export async function verifyProduct(
       state: product.state,
     },
     journey: journeyBlocks.map((b) => ({ action: b.action, signer: b.signer, payload: safeParse(b.payload), timestamp: b.timestamp })),
+    ...(risk ? { risk } : {}),
   };
 }
 async function createAlert(productId: string | null, type: string, message: string, location?: string | null) {
   const alert = await db.alert.create({ data: { productId, type, message, location: location ?? null } });
-  // Fire-and-forget: SMTP must never slow down or fail a verification response.
+  // SNS fan-out (email subscribers) + SMTP, both fire-and-forget.
+  void publishAlert({ type: alert.type, message: alert.message, location: alert.location, productId: alert.productId });
   void notifyAlert(alert).catch((err) => console.error("[verify] alert email error:", err));
 }
 

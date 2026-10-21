@@ -31,6 +31,7 @@ export function LedgerTicker({ limit = 8 }: { limit?: number }) {
 
   useEffect(() => {
     const load = async () => {
+      if (!localStorage.getItem("medguard_token")) return;
       try {
         const { data } = await api.get("/ledger/recent", { params: { limit } });
         setBlocks(data);

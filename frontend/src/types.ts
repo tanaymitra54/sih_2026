@@ -43,6 +43,7 @@ export interface VerifyResult {
   flags: string[];
   product: { serial: string; name: string; batchCode: string; state: string } | null;
   journey: JourneyItem[];
+  risk?: { score: number; level: "low" | "medium" | "high"; reasons: string[]; state: number; action: number; threshold: number };
 }
 
 export interface Alert {

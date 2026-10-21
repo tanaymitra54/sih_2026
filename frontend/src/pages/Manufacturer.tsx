@@ -61,9 +61,13 @@ export function Manufacturer() {
   });
 
   async function load() {
-    const { data } = await api.get("/batches");
-    setBatches(data);
-    setSelected((s) => (s ? data.find((b: Batch) => b.id === s.id) ?? null : null));
+    try {
+      const { data } = await api.get("/batches");
+      setBatches(data);
+      setSelected((s) => (s ? data.find((b: Batch) => b.id === s.id) ?? null : null));
+    } catch {
+      /* 401 / network — handled by guard */
+    }
   }
   useEffect(() => {
     load();

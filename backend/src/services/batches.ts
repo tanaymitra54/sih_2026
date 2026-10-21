@@ -4,6 +4,7 @@ import { ACTIONS } from "../blockchain/ledger.js";
 import { encodeQr, generateSerial, signSerial } from "../utils/qr.js";
 import { notifyRecall } from "./notify.js";
 import { resolveCoords } from "../utils/geo.js";
+import { uploadQrArtifact, signBatchManifest, snapshotLedger, publishAlert } from "../aws/orvyn-aws.js";
 
 /**
  * Manufacturer submits a mint request. No products, serials, QRs or ledger
@@ -39,6 +40,7 @@ export async function approveBatch(adminId: string, batchId: string) {
   const mfr = batch.manufacturer;
   const coords = resolveCoords(mfr?.location);
   let minted = 0;
+  const packs: { serial: string; hmac: string }[] = [];
   for (let i = 0; i < batch.quantity; i++) {
     const serial = generateSerial();
     const hmac = signSerial(serial, batch.code);
@@ -58,8 +60,20 @@ export async function approveBatch(adminId: string, batchId: string) {
       }),
     });
     minted++;
+    packs.push({ serial, hmac });
   }
-  return { ...batch, status: "ACTIVE", productsMinted: minted };
+
+  // AWS plane: QR PNGs → S3, HSM-signed manifest → KMS, chain snapshot → S3.
+  // Never blocks the mint response.
+  void (async () => {
+    for (const p of packs) {
+      await uploadQrArtifact({ serial: p.serial, batchCode: batch.code, qr: encodeQr(p.serial, p.hmac, batch.code) });
+    }
+    await signBatchManifest({ batchCode: batch.code, serials: packs.map((p) => p.serial) });
+    await snapshotLedger(true);
+  })().catch((err) => console.warn("[aws:batch-artifacts]", err));
+
+  return { ...batch, status: "ACTIVE", productsMinted: minted, awsArtifacts: packs.length };
 }
 
 /** Admin rejects a mint request. Terminal — no products are ever created. */
@@ -143,5 +157,10 @@ export async function recallBatch(manufacturerId: string, batchId: string) {
   });
 
   const sent = await notifyRecall(batch);
+  void publishAlert({
+    type: "batch_recalled",
+    message: `Batch ${batch.code} (${batch.name}) recalled — ${products.length} packs flagged. Do not sell.`,
+    location: batch.route,
+  });
   return { ...batch, recalled: true, notified: sent };
 }

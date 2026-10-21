@@ -10,8 +10,7 @@ import {
   type KeyObject,
 } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { QR_HMAC_SECRET } from "../config.js";
 
 /**
@@ -23,7 +22,10 @@ import { QR_HMAC_SECRET } from "../config.js";
  * still verify via verifySignature()'s fallback — no migration needed.
  */
 
-const KEY_FILE = fileURLToPath(new URL("../../keys/mfr-ed25519.json", import.meta.url));
+// Resolve from the process working directory, not from import.meta.url:
+// `tsx` (src/) and the compiled server (dist/) must read the SAME keypair,
+// otherwise packs minted by the seed script fail verification in production.
+const KEY_FILE = process.env.QR_KEY_FILE ?? resolve(process.cwd(), "keys", "mfr-ed25519.json");
 
 let privateKey: KeyObject | null = null;
 

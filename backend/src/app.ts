@@ -7,6 +7,7 @@ import verifyRoutes from "./routes/verify.js";
 import reportRoutes from "./routes/reports.js";
 import ledgerRoutes from "./routes/ledger.js";
 import chatRoutes from "./routes/chat.js";
+import awsRoutes from "./routes/aws.js";
 import { errorHandler } from "./middleware/auth.js";
 
 export const app = express();
@@ -21,6 +22,7 @@ app.use("/api/verify", verifyRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/ledger", ledgerRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/aws", awsRoutes);
 
 app.use("/health", (_req, res) => res.json({ ok: true }));
 

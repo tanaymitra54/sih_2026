@@ -61,16 +61,28 @@ Body: `{ serial }` → requires `AT_PHARMACY`, sets `SOLD`.
 
 ### POST /verify
 Body: `{ qr, scan?: { location?, lat?, lng? } }`
-→ `{ verdict, flags[], product | null, journey[] }`
+→ `{ verdict, flags[], product | null, journey[], risk? }`
 
 - `verdict`: `GENUINE | SUSPICIOUS | COUNTERFEIT`
 - `flags`: `unparseable_qr | not_minted | bad_signature | chain_broken |
-  batch_not_approved | scanned_after_sold | route_mismatch | scan_flood`
+  batch_not_approved | scanned_after_sold | route_mismatch | scan_flood |
+  batch_recalled | missing_handoff | impossible_travel | ml_high_risk`
 - `product`: `{ serial, name, batchCode, state }` (null if never minted)
 - `journey`: ordered custody blocks `{ action, signer, payload, timestamp }`
   (timestamps in **seconds** — multiply by 1000 client-side).
+- `risk` (RL bandit): `{ score: 0..100, level: low|medium|high, reasons[], state: 0..2, action: 0..2, threshold }`
 
-Each call also appends a VERIFY block + a ScanEvent, and writes Alerts on anomalies.
+Each call also appends a VERIFY block + a ScanEvent, writes Alerts on anomalies, and runs the RL risk engine (see below).
+
+### GET /verify/rl-stats  (public) — bandit Q-table + epsilon
+→ `{ qTable: number[3][3], epsilon, totalUpdates, thresholds, states, actions }`
+
+### POST /verify/feedback  (public) — reward the bandit
+Body: `{ productId? | serial?, reward: -1..1 }` or `{ serial, correct: boolean }`
+→ `{ ok, reward, state, action, qOld, qNew }`
+Reward `+1` = true fraud caught, `-1` = false alarm. Uses the last bandit decision for that product.
+
+### POST /verify/rl-reset  (auth: admin) — reset Q-table
 
 ## Reports  (auth)
 
